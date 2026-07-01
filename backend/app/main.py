@@ -4,7 +4,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1 import api_router
 from app.core.config import settings
 from app.db.session import Base, engine
-import app.db.base
 
 Base.metadata.create_all(bind=engine)
 
@@ -27,7 +26,6 @@ app.include_router(
     api_router,
     prefix=settings.API_V1_PREFIX,
 )
-
 
 @app.get("/health", tags=["System"])
 async def health():
