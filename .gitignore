@@ -20,3 +20,6 @@ frontend/project_tree.txt
 frontend/WorkflowAudit.txt
 frontend/ChatGPT_Review.zip
 frontend/ChatGPT_Review/
+# Database
+backend/*.db
+backend/creatoros.db

@@ -1,17 +1,39 @@
 import { create } from "zustand";
-import { Project } from "../types/project";
 import { getProjects } from "../services/project.service";
+
+export interface Project {
+  id: number;
+  name: string;
+  description: string;
+}
 
 interface ProjectStore {
   projects: Project[];
-  addProject: (project: Project) => void;
+  loading: boolean;
+
+  loadProjects: () => Promise<void>;
 }
 
 export const useProjectStore = create<ProjectStore>((set) => ({
-  projects: getProjects(),
+  projects: [],
+  loading: false,
 
-  addProject: (project) =>
-    set((state) => ({
-      projects: [...state.projects, project],
-    })),
+  loadProjects: async () => {
+    set({ loading: true });
+
+    try {
+      const data = await getProjects();
+
+      set({
+        projects: data,
+        loading: false,
+      });
+    } catch (error) {
+      console.error(error);
+
+      set({
+        loading: false,
+      });
+    }
+  },
 }));

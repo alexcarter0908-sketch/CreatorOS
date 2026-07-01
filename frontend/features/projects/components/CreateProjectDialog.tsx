@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
+import { addProject } from "../services/project.service";
 import { useProjectStore } from "../store/project.store";
 
 interface Props {
@@ -24,34 +25,39 @@ export default function CreateProjectDialog({
   open,
   onOpenChange,
 }: Props) {
-  const addProject = useProjectStore((state) => state.addProject);
+  const loadProjects = useProjectStore(
+    (state) => state.loadProjects
+  );
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function handleCreate() {
-    if (!name.trim() || !description.trim()) {
-      return;
+  async function handleCreate() {
+    if (!name.trim()) return;
+
+    setLoading(true);
+
+    try {
+      await addProject(name, description);
+
+      await loadProjects();
+
+      setName("");
+      setDescription("");
+
+      onOpenChange(false);
+    } catch (error) {
+      console.error(error);
+      alert("Failed to create project");
+    } finally {
+      setLoading(false);
     }
-
-    addProject({
-      id: crypto.randomUUID(),
-      name,
-      description,
-      status: "Draft",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-
-    setName("");
-    setDescription("");
-
-    onOpenChange(false);
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Create Project</DialogTitle>
         </DialogHeader>
@@ -66,14 +72,17 @@ export default function CreateProjectDialog({
           <Textarea
             placeholder="Project Description"
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e) =>
+              setDescription(e.target.value)
+            }
           />
 
           <Button
             className="w-full"
+            disabled={loading}
             onClick={handleCreate}
           >
-            Create Project
+            {loading ? "Creating..." : "Create Project"}
           </Button>
         </div>
       </DialogContent>

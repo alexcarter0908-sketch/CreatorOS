@@ -1,11 +1,18 @@
 "use client";
 
+import { useEffect } from "react";
+
 import CreateProjectButton from "./CreateProjectButton";
 import ProjectCard from "./ProjectCard";
+
 import { useProjectStore } from "../store/project.store";
 
 export default function ProjectsPage() {
-  const projects = useProjectStore((state) => state.projects);
+  const { projects, loadProjects, loading } = useProjectStore();
+
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
 
   return (
     <main className="space-y-8">
@@ -23,13 +30,14 @@ export default function ProjectsPage() {
         <CreateProjectButton />
       </div>
 
+      {loading && <p>Loading projects...</p>}
+
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {projects.map((project) => (
           <ProjectCard
             key={project.id}
             title={project.name}
             description={project.description}
-            status={project.status}
           />
         ))}
       </div>
