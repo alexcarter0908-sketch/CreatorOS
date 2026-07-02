@@ -1,0 +1,22 @@
+node_modules/
+docs/node_modules/
+frontend/node_modules/
+.venv/
+__pycache__/
+*.pyc
+.env
+.vscode/
+
+# Generated reports
+CreatorOS_Extract.txt
+Frontend_Source.txt
+Frontend_Tree.txt
+project_tree.txt
+git_status.txt
+git_log.txt
+frontend/CurrentFiles.txt
+frontend/CurrentProjectTree.txt
+frontend/project_tree.txt
+frontend/WorkflowAudit.txt
+frontend/ChatGPT_Review.zip
+frontend/ChatGPT_Review/
