@@ -1,20 +1,11 @@
-export type CommandPriority =
-  | "low"
-  | "normal"
-  | "high";
-
-export interface ExecuteCommandRequest {
-  projectId: string;
-
+export interface RunCommandRequest {
   command: string;
-
-  priority: CommandPriority;
 }
 
-export interface ExecuteCommandResponse {
-  executionId: string;
-
-  accepted: boolean;
-
-  message: string;
+export interface RunCommandResponse {
+  success: boolean;
+  command: string;
+  agent: string;
+  status: string;
+  result: string;
 }

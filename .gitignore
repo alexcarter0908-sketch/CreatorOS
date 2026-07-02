@@ -1,13 +1,60 @@
+# ----------------------------
+# Node
+# ----------------------------
+
 node_modules/
 docs/node_modules/
 frontend/node_modules/
-.venv/
-__pycache__/
-*.pyc
-.env
-.vscode/
 
-# Generated reports
+# ----------------------------
+# Python
+# ----------------------------
+
+.venv/
+venv/
+env/
+
+__pycache__/
+*.py[cod]
+*$py.class
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ----------------------------
+# Environment
+# ----------------------------
+
+.env
+.env.*
+!.env.example
+
+# ----------------------------
+# IDE
+# ----------------------------
+
+.vscode/
+.idea/
+
+# ----------------------------
+# OS
+# ----------------------------
+
+.DS_Store
+Thumbs.db
+
+# ----------------------------
+# Build
+# ----------------------------
+
+dist/
+build/
+
+# ----------------------------
+# Generated Reports
+# ----------------------------
+
 CreatorOS_Extract.txt
 Frontend_Source.txt
 Frontend_Tree.txt

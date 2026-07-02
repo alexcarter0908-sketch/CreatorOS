@@ -6,16 +6,21 @@ export interface AICommandRequest {
 }
 
 export interface AICommandResponse {
-  executionId: string;
-  status: "accepted" | "running" | "completed" | "failed";
+  success: boolean;
+  command: string;
+  agent: string;
+  status: string;
+  result: string;
 }
 
 export async function executeAICommand(
   payload: AICommandRequest
 ): Promise<AICommandResponse> {
   const response = await apiClient.post(
-    "/api/v1/commands/execute",
-    payload
+    "/api/v1/commands/run",
+    {
+      command: payload.command,
+    }
   );
 
   return response.data;

@@ -8,7 +8,9 @@ from app.api.v1.endpoints import (
     users_router,
     projects_router,
     commands_router,
+    providers_router,
 )
+
 from app.core.config.settings import settings
 from app.database.init_db import init_database
 
@@ -30,7 +32,9 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL],
+    allow_origins=[
+        settings.FRONTEND_URL,
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -56,6 +60,11 @@ app.include_router(
     prefix=settings.API_V1_PREFIX,
 )
 
+app.include_router(
+    providers_router,
+    prefix=settings.API_V1_PREFIX,
+)
+
 
 @app.get(
     "/health",
@@ -66,4 +75,5 @@ async def health():
         "status": "healthy",
         "application": settings.APP_NAME,
         "version": settings.APP_VERSION,
+        "ai_system": "CreatorOS",
     }

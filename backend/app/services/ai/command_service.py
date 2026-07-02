@@ -1,11 +1,13 @@
-import uuid
+from app.services.router import AIRouter
 
 
 class CommandService:
-    def execute(self, project_id: str, command: str):
-        return {
-            "executionId": str(uuid.uuid4()),
-            "status": "completed",
-            "projectId": project_id,
-            "command": command,
-        }
+
+    def __init__(self):
+        self.router = AIRouter()
+
+    async def execute(
+        self,
+        command: str,
+    ):
+        return await self.router.execute(command)
