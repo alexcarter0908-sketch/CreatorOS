@@ -48,5 +48,5 @@ class AuthService:
             raise ValueError("Invalid email or password.")
 
         return create_access_token(
-            subject=user.id,
+            subject=str(user.id),
         )

@@ -7,6 +7,7 @@ from app.api.v1.endpoints import (
     auth_router,
     users_router,
     projects_router,
+    commands_router,
 )
 from app.core.config.settings import settings
 from app.database.init_db import init_database
@@ -47,6 +48,11 @@ app.include_router(
 
 app.include_router(
     projects_router,
+    prefix=settings.API_V1_PREFIX,
+)
+
+app.include_router(
+    commands_router,
     prefix=settings.API_V1_PREFIX,
 )
 

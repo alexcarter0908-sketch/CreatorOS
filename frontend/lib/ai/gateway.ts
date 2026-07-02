@@ -1,4 +1,4 @@
-import { apiRequest } from "@/lib/api/client";
+import apiClient from "@/lib/api/client";
 
 export interface AICommandRequest {
   projectId: string;
@@ -13,8 +13,10 @@ export interface AICommandResponse {
 export async function executeAICommand(
   payload: AICommandRequest
 ): Promise<AICommandResponse> {
-  return apiRequest<AICommandResponse>("/api/v1/commands/execute", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  const response = await apiClient.post(
+    "/api/v1/commands/execute",
+    payload
+  );
+
+  return response.data;
 }

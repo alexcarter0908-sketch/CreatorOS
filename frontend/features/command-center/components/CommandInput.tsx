@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
+import { submitCommand } from "../services/command.service";
 import { useCommandStore } from "../store/command.store";
 
 export default function CommandInput() {
@@ -10,19 +12,29 @@ export default function CommandInput() {
 
   const addCommand = useCommandStore((state) => state.addCommand);
 
-  function handleSubmit() {
+  async function handleSubmit() {
     const value = prompt.trim();
 
     if (!value) return;
 
-    addCommand({
-      id: crypto.randomUUID(),
-      prompt: value,
-      status: "Pending",
-      createdAt: new Date().toISOString(),
-    });
+    try {
+      const result = await submitCommand(
+        "demo-project",
+        value
+      );
 
-    setPrompt("");
+      addCommand({
+        id: result.executionId,
+        prompt: value,
+        status: result.status,
+        createdAt: new Date().toISOString(),
+      });
+
+      setPrompt("");
+    } catch (error) {
+      console.error(error);
+      alert("Failed to execute command.");
+    }
   }
 
   return (

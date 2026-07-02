@@ -30,7 +30,7 @@ export interface AuthState {
   isLoading: boolean;
 }
 
-export interface LoginResponse extends AuthTokens {}
+export type LoginResponse = AuthTokens;
 
 export interface RegisterResponse {
   message: string;

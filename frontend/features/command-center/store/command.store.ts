@@ -1,6 +1,6 @@
 import { create } from "zustand";
-import { Command } from "../types/command";
-import { getCommands } from "../services/command.service";
+
+import type { Command } from "../types/command";
 
 interface CommandStore {
   commands: Command[];
@@ -8,7 +8,7 @@ interface CommandStore {
 }
 
 export const useCommandStore = create<CommandStore>((set) => ({
-  commands: getCommands(),
+  commands: [],
 
   addCommand: (command) =>
     set((state) => ({
