@@ -31,9 +31,7 @@ apiClient.interceptors.request.use(
 
 apiClient.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    return Promise.reject(error);
-  }
+  async (error) => Promise.reject(error)
 );
 
 export default apiClient;
