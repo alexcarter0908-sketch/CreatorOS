@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -49,5 +51,5 @@ class ProjectResponse(BaseModel):
     description: str | None
     status: str
     brand_voice: str | None
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
