@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import logging
+import time
+
 import requests
 
 from app.core.config.settings import settings
@@ -7,6 +10,34 @@ from app.core.config.settings import settings
 
 class TranscriptionError(RuntimeError):
     pass
+
+
+logger = logging.getLogger("transcription")
+
+
+# Intermittent SSL/connection glitches talking to Groq (observed: SSL
+# EOF mid-handshake on short recordings, clears up on its own a moment
+# later) used to crash the whole transcription request with no retry.
+# This wrapper retries a couple of times on transient network failures
+# only - a clean HTTP response (even an error status like 4xx/5xx) is
+# NOT retried here, since that's a real answer from the server and is
+# handled by the caller exactly as before.
+_MAX_RETRIES = 2
+_RETRY_BACKOFF_SECONDS = 1.5
+
+
+def _post_with_retry(url: str, **kwargs):
+    last_exc: Exception | None = None
+    for attempt in range(_MAX_RETRIES + 1):
+        try:
+            return requests.post(url, **kwargs)
+        except requests.exceptions.RequestException as exc:
+            last_exc = exc
+            if attempt < _MAX_RETRIES:
+                time.sleep(_RETRY_BACKOFF_SECONDS * (attempt + 1))
+                continue
+            raise
+    raise last_exc  # pragma: no cover - unreachable, satisfies type checkers
 
 
 def transcribe_audio_bytes(audio_bytes: bytes, filename: str = "audio.webm") -> str:
@@ -34,15 +65,21 @@ def transcribe_audio_bytes(audio_bytes: bytes, filename: str = "audio.webm") -> 
         "Authorization": f"Bearer {settings.GROQ_API_KEY}",
     }
 
-    response = requests.post(
-        "https://api.groq.com/openai/v1/audio/transcriptions",
-        headers=headers,
-        data=data,
-        files=files,
-        timeout=120,
-    )
+    try:
+        response = _post_with_retry(
+            "https://api.groq.com/openai/v1/audio/transcriptions",
+            headers=headers,
+            data=data,
+            files=files,
+            timeout=120,
+        )
+    except requests.exceptions.RequestException as exc:
+        raise TranscriptionError(
+            f"Could not reach the transcription service after retrying: {exc}"
+        ) from exc
 
     if response.status_code != 200:
+        logger.error("Groq Whisper STT failed (%s): %s", response.status_code, response.text[:1000])
         raise TranscriptionError(
             f"Groq Whisper STT failed ({response.status_code}): {response.text[:500]}"
         )
@@ -51,6 +88,7 @@ def transcribe_audio_bytes(audio_bytes: bytes, filename: str = "audio.webm") -> 
     text = payload.get("text", "")
 
     if not text:
+        logger.error("Groq Whisper STT returned empty text. Raw response: %s", response.text[:1000])
         raise TranscriptionError("Groq Whisper STT returned empty text.")
 
     return text.strip()
@@ -150,13 +188,18 @@ def transcribe_audio_url(url: str) -> str:
         "xi-api-key": settings.ELEVENLABS_API_KEY,
     }
 
-    response = requests.post(
-        "https://api.elevenlabs.io/v1/speech-to-text",
-        headers=headers,
-        data=data,
-        files=files,
-        timeout=120,
-    )
+    try:
+        response = _post_with_retry(
+            "https://api.elevenlabs.io/v1/speech-to-text",
+            headers=headers,
+            data=data,
+            files=files,
+            timeout=120,
+        )
+    except requests.exceptions.RequestException as exc:
+        raise TranscriptionError(
+            f"Could not reach the transcription service after retrying: {exc}"
+        ) from exc
 
     if response.status_code != 200:
         raise TranscriptionError(
