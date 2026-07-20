@@ -1,4 +1,4 @@
-# ----------------------------
+﻿# ----------------------------
 # Node
 # ----------------------------
 
@@ -67,3 +67,34 @@ frontend/project_tree.txt
 frontend/WorkflowAudit.txt
 frontend/ChatGPT_Review.zip
 frontend/ChatGPT_Review/
+# ----------------------------
+# Development debris (backups, one-off patch/fix/test scripts, dumps)
+# ----------------------------
+*.bak
+*.bak_*
+patch_*.py
+patch_*.ps1
+patch_*.js
+fix_*.py
+fix_*.ps1
+fix-*.ps1
+test_*.py
+test_*.webm
+*_context_dump.txt
+*_context_dump_*.txt
+result.txt
+api.json
+db_context_dump.txt
+build_log.txt
+*.tmp
+backend/creatoros.db
+CommandInput.txt
+
+# ----------------------------
+# Confirmed exact duplicates (verified identical to their real location)
+# ----------------------------
+/favicon.ico
+/logo.png
+/logo-128.png
+/chat_agent (1).py
+/search_gate (1).py

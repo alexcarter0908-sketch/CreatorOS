@@ -1,8 +1,15 @@
-from app.database.base import Base
+﻿from app.database.base import Base
 from app.database.session.database import engine
 
-# Import all models
-from app.database.models import User, Project
+from app.database.models import (
+    User,
+    Project,
+    Asset,
+    AutoTarget,
+    Workflow,
+    WorkflowStep,
+    PublishAccount,
+)
 
 
 def init_database() -> None:

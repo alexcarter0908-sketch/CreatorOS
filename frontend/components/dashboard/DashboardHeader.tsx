@@ -1,4 +1,4 @@
-interface DashboardHeaderProps {
+﻿interface DashboardHeaderProps {
   title: string;
   subtitle: string;
 }
@@ -8,14 +8,11 @@ export default function DashboardHeader({
   subtitle,
 }: DashboardHeaderProps) {
   return (
-    <div className="mb-8">
-      <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+    <div className="mb-10">
+      <h1 className="text-4xl font-semibold tracking-tight text-foreground">
         {title}
       </h1>
-
-      <p className="mt-2 text-slate-500">
-        {subtitle}
-      </p>
+      <p className="mt-2 text-lg text-muted-foreground">{subtitle}</p>
     </div>
   );
 }

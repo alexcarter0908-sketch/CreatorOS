@@ -23,6 +23,7 @@ class ProjectService:
             owner_id=owner_id,
             name=request.name,
             description=request.description,
+            brand_voice=request.brand_voice,
         )
 
     def list(
@@ -69,7 +70,8 @@ class ProjectService:
 
         if request.status is not None:
             project.status = request.status
-
+        if request.brand_voice is not None:
+            project.brand_voice = request.brand_voice
         return self.projects.update(project)
 
     def delete(

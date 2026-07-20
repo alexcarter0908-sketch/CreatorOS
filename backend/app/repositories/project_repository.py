@@ -15,11 +15,13 @@ class ProjectRepository:
         owner_id: str,
         name: str,
         description: str | None = None,
+        brand_voice: str | None = None,
     ) -> Project:
         project = Project(
             owner_id=owner_id,
             name=name,
             description=description,
+            brand_voice=brand_voice,
         )
 
         self.db.add(project)

@@ -1,17 +1,17 @@
-export const PROJECT_STATUS = {
-  ACTIVE: "Active",
-  DRAFT: "Draft",
-  COMPLETED: "Completed",
-} as const;
-
-export type ProjectStatus =
-  (typeof PROJECT_STATUS)[keyof typeof PROJECT_STATUS];
+export type ProjectStatus = "draft" | "active" | "completed";
 
 export interface Project {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   status: ProjectStatus;
-  createdAt: string;
-  updatedAt: string;
+  brand_voice: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateProjectPayload {
+  name: string;
+  description?: string;
+  brand_voice?: string;
 }

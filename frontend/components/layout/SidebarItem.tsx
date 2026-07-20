@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { LucideIcon } from "lucide-react";
 
 interface SidebarItemProps {
@@ -6,6 +6,7 @@ interface SidebarItemProps {
   label: string;
   icon: LucideIcon;
   active?: boolean;
+  expanded?: boolean;
 }
 
 export default function SidebarItem({
@@ -13,30 +14,20 @@ export default function SidebarItem({
   label,
   icon: Icon,
   active = false,
+  expanded = true,
 }: SidebarItemProps) {
   return (
     <Link
       href={href}
-      className={`
-        flex items-center gap-3
-        rounded-xl
-        px-4
-        py-3
-        transition-all
-        duration-200
-
-        ${
-          active
-            ? "bg-blue-600 text-white shadow-md"
-            : "text-slate-300 hover:bg-slate-800 hover:text-white"
-        }
-      `}
+      title={label}
+      className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
+        active
+          ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+          : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+      } ${expanded ? "" : "justify-center"}`}
     >
-      <Icon size={20} />
-
-      <span className="font-medium">
-        {label}
-      </span>
+      <Icon size={18} className="shrink-0" />
+      {expanded && <span className="truncate">{label}</span>}
     </Link>
   );
 }

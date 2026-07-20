@@ -1,129 +1,122 @@
-from dataclasses import dataclass
-from typing import Dict
+from __future__ import annotations
+
+from dataclasses import dataclass, field
 
 
 @dataclass(slots=True, frozen=True)
 class AIModel:
+    """
+    Canonical definition of an AI model.
+
+    Every provider model inside CreatorOS must be registered
+    using this dataclass.
+
+    The registry is provider-agnostic and supports:
+
+    • Text
+    • Vision
+    • Image Generation
+    • Video Generation
+    • Audio
+    • Embeddings
+    • Search
+    • Reasoning
+    • Function Calling
+
+    Future:
+    • MCP
+    • A2A
+    • Multi-Agent
+    """
+
+    # =====================================================
+    # Identity
+    # =====================================================
 
     id: str
+
     provider: str
+
     model: str
+
     category: str
 
-    quality: str
-    speed: str
-    cost: str
+    display_name: str = ""
 
-    supports_text: bool = False
-    supports_image: bool = False
-    supports_video: bool = False
-    supports_audio: bool = False
-    supports_vision: bool = False
-    supports_streaming: bool = False
-    supports_function_calling: bool = False
+    description: str = ""
 
-    max_context: int = 0
+    # =====================================================
+    # Availability
+    # =====================================================
 
     enabled: bool = True
 
+    priority: int = 100
 
-MODEL_REGISTRY: Dict[str, AIModel] = {
+    # =====================================================
+    # Performance
+    # =====================================================
 
-    # ---------- OpenAI ----------
+    quality: str = "high"
 
-    "gpt-5.5": AIModel(
-        id="gpt-5.5",
-        provider="openai",
-        model="gpt-5.5",
-        category="text",
-        quality="ultra",
-        speed="high",
-        cost="high",
-        supports_text=True,
-        supports_streaming=True,
-        supports_function_calling=True,
-        supports_vision=True,
-        max_context=400000,
-    ),
+    speed: str = "balanced"
 
-    # ---------- Anthropic ----------
+    cost: str = "medium"
 
-    "claude-sonnet-4": AIModel(
-        id="claude-sonnet-4",
-        provider="anthropic",
-        model="claude-sonnet-4",
-        category="text",
-        quality="ultra",
-        speed="high",
-        cost="high",
-        supports_text=True,
-        supports_streaming=True,
-        max_context=200000,
-    ),
+    max_context: int = 0
 
-    # ---------- Gemini ----------
+    # =====================================================
+    # Supported Capabilities
+    # =====================================================
 
-    "gemini-2.5-pro": AIModel(
-        id="gemini-2.5-pro",
-        provider="gemini",
-        model="gemini-2.5-pro",
-        category="text",
-        quality="ultra",
-        speed="high",
-        cost="medium",
-        supports_text=True,
-        supports_vision=True,
-        supports_streaming=True,
-        max_context=1000000,
-    ),
+    supports_text: bool = False
 
-    # ---------- Image ----------
+    supports_image: bool = False
 
-    "flux-pro": AIModel(
-        id="flux-pro",
-        provider="fal",
-        model="flux-pro",
-        category="image",
-        quality="ultra",
-        speed="medium",
-        cost="medium",
-        supports_image=True,
-    ),
+    supports_video: bool = False
 
-    # ---------- Video ----------
+    supports_audio: bool = False
 
-    "kling-v2": AIModel(
-        id="kling-v2",
-        provider="kling",
-        model="kling-v2",
-        category="video",
-        quality="ultra",
-        speed="medium",
-        cost="high",
-        supports_video=True,
-    ),
+    supports_vision: bool = False
 
-    "runway-gen4": AIModel(
-        id="runway-gen4",
-        provider="runway",
-        model="gen4",
-        category="video",
-        quality="ultra",
-        speed="medium",
-        cost="high",
-        supports_video=True,
-    ),
+    supports_streaming: bool = False
 
-    # ---------- Audio ----------
+    supports_embeddings: bool = False
 
-    "elevenlabs-v2": AIModel(
-        id="elevenlabs-v2",
-        provider="elevenlabs",
-        model="eleven_multilingual_v2",
-        category="audio",
-        quality="ultra",
-        speed="high",
-        cost="medium",
-        supports_audio=True,
-    ),
-}
+    supports_reasoning: bool = False
+
+    supports_json_mode: bool = False
+
+    supports_function_calling: bool = False
+
+    supports_web_search: bool = False
+
+    supports_tools: bool = False
+
+    supports_editing: bool = False
+
+    # =====================================================
+    # Limits
+    # =====================================================
+
+    max_images: int = 0
+
+    max_video_seconds: int = 0
+
+    max_audio_minutes: int = 0
+
+    # =====================================================
+    # Automatic fallback chain
+    # =====================================================
+
+    fallback: tuple[str, ...] = field(
+        default_factory=tuple,
+    )
+
+    # =====================================================
+    # Provider Metadata
+    # =====================================================
+
+    metadata: dict = field(
+        default_factory=dict,
+    )

@@ -35,6 +35,11 @@ class Project(
         nullable=False,
     )
 
+    brand_voice: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
     owner = relationship(
         "User",
         back_populates="projects",

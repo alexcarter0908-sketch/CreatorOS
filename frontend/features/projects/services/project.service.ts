@@ -1,32 +1,18 @@
-import { Project } from "../types/project";
+import apiClient from "@/lib/api/client";
+import type { CreateProjectPayload, Project } from "../types/project";
 
-export const projects: Project[] = [
-  {
-    id: crypto.randomUUID(),
-    name: "Tech News Daily",
-    description: "Daily AI news videos",
-    status: "Active",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: crypto.randomUUID(),
-    name: "Finance Explained",
-    description: "Educational finance content",
-    status: "Draft",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: crypto.randomUUID(),
-    name: "History Documentary",
-    description: "Historical documentary channel",
-    status: "Completed",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
+export async function listProjects(): Promise<Project[]> {
+  const { data } = await apiClient.get<Project[]>("/api/v1/projects");
+  return data;
+}
 
-export function getProjects() {
-  return projects;
+export async function createProject(
+  payload: CreateProjectPayload
+): Promise<Project> {
+  const { data } = await apiClient.post<Project>("/api/v1/projects", payload);
+  return data;
+}
+
+export async function deleteProject(id: string): Promise<void> {
+  await apiClient.delete(`/api/v1/projects/${id}`);
 }

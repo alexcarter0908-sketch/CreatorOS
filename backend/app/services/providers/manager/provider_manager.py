@@ -1,60 +1,50 @@
-from app.schemas.ai_request import AIRequest
-from app.schemas.ai_response import AIResponse
+from __future__ import annotations
 
-from app.services.providers.selector.provider_selector import ProviderSelector
-from app.services.providers.factory.provider_factory import ProviderFactory
-from app.services.providers.executor.provider_executor import ProviderExecutor
+from app.schemas.ai_request import AIRequest
+
+from app.services.providers.executor.provider_executor import (
+    ProviderExecutor,
+)
 
 
 class ProviderManager:
     """
-    Facade for the Provider Layer.
-
-    Flow:
-        AIRequest
-            ↓
-        ProviderSelector
-            ↓
-        ProviderFactory
-            ↓
-        ProviderExecutor
-            ↓
-        AIResponse
+    High-level Provider Manager
     """
 
     def __init__(self):
 
-        self.selector = ProviderSelector()
-        self.factory = ProviderFactory()
         self.executor = ProviderExecutor()
+
+    # ---------------------------------------------------------
 
     async def generate(
         self,
         request: AIRequest,
-    ) -> AIResponse:
+    ) -> dict:
 
-        model = self.selector.select(
-            asset_type=request.asset_type,
-            quality=request.quality,
-            speed=request.speed,
+        return await self.executor.execute(
+            request,
         )
 
-        provider = self.factory.create(
-            model.provider,
-        )
+    # ---------------------------------------------------------
 
-        result = await self.executor.execute(
-            provider=provider,
-            prompt=request.prompt,
-            model=model.name,
-            **request.metadata,
-        )
+    async def health_report(
+        self,
+    ) -> dict[str, bool]:
 
-        return AIResponse(
-            success=result.get("success", True),
-            provider=result.get("provider", model.provider),
-            model=result.get("model", model.name),
-            result=result.get("result"),
-            language=request.language,
-            metadata=result.get("metadata", {}),
-        )
+        return await self.executor.health_report()
+
+    # ---------------------------------------------------------
+
+    def available_providers(
+        self,
+    ) -> list[str]:
+
+        return self.executor.available_providers()
+
+    # ---------------------------------------------------------
+
+    def reload(self) -> list[str]:
+
+        return self.executor.reload()

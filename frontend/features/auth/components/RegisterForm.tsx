@@ -2,6 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 import { useAuthStore } from "../store/auth.store";
 
@@ -15,65 +20,71 @@ export default function RegisterForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  async function handleSubmit(
-    e: React.FormEvent<HTMLFormElement>
-  ) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     try {
-      await register({
-        full_name: fullName,
-        email,
-        password,
-      });
-
-      alert("Registration successful.");
-
-      router.push("/login");
+      const verifiedEmail = await register({ full_name: fullName, email, password });
+      toast.success("Account created! Check your email for a verification code.");
+      router.push(`/verify-email?email=${encodeURIComponent(verifiedEmail)}`);
     } catch {
-      alert("Registration failed.");
+      toast.error("Registration failed. Try a different email.");
     }
   }
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="w-full max-w-md space-y-4 rounded-lg border p-6"
+      className="w-full max-w-md space-y-4 rounded-2xl border bg-card p-8 shadow-sm"
     >
-      <h1 className="text-3xl font-bold">
-        Create Account
-      </h1>
+      <h1 className="text-3xl font-bold text-foreground">Create Account</h1>
 
-      <input
-        className="w-full rounded border p-3"
-        placeholder="Full Name"
-        value={fullName}
-        onChange={(e) => setFullName(e.target.value)}
-      />
+      <div className="space-y-2">
+        <Label htmlFor="fullName">Full Name</Label>
+        <Input
+          id="fullName"
+          placeholder="Jane Doe"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          required
+        />
+      </div>
 
-      <input
-        className="w-full rounded border p-3"
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
+      <div className="space-y-2">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          type="email"
+          placeholder="you@example.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+      </div>
 
-      <input
-        className="w-full rounded border p-3"
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
+      <div className="space-y-2">
+        <Label htmlFor="password">Password</Label>
+        <Input
+          id="password"
+          type="password"
+          placeholder="At least 8 characters"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          minLength={8}
+          required
+        />
+      </div>
 
-      <button
-        type="submit"
-        disabled={isLoading}
-        className="w-full rounded bg-black p-3 text-white"
-      >
+      <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? "Creating..." : "Register"}
-      </button>
+      </Button>
+
+      <p className="text-center text-sm text-muted-foreground">
+        Already have an account?{" "}
+        <a href="/login" className="font-medium text-blue-600 hover:underline">
+          Login
+        </a>
+      </p>
     </form>
   );
 }

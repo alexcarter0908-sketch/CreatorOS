@@ -1,0 +1,120 @@
+from __future__ import annotations
+
+from app.services.providers.registry.model import AIModel
+
+
+OPENAI_MODELS = [
+
+    AIModel(
+        id="gpt-5.5",
+        provider="openai",
+        model="gpt-5.5",
+        category="text",
+        display_name="GPT-5.5",
+        description="Latest flagship model",
+        priority=1,
+        quality="ultra",
+        speed="high",
+        cost="high",
+        max_context=400000,
+        supports_text=True,
+        supports_vision=True,
+        supports_streaming=True,
+        supports_reasoning=True,
+        supports_json_mode=True,
+        supports_function_calling=True,
+        supports_embeddings=True,
+        fallback=(
+            "gpt-5-mini",
+            "o4-mini",
+        ),
+    ),
+
+    AIModel(
+        id="gpt-5-mini",
+        provider="openai",
+        model="gpt-5-mini",
+        category="text",
+        display_name="GPT-5 Mini",
+        description="Fast & inexpensive GPT-5",
+        priority=2,
+        quality="high",
+        speed="ultra",
+        cost="low",
+        max_context=400000,
+        supports_text=True,
+        supports_vision=True,
+        supports_streaming=True,
+        supports_reasoning=True,
+        supports_json_mode=True,
+        supports_function_calling=True,
+        supports_embeddings=True,
+        fallback=(
+            "o4-mini",
+        ),
+    ),
+
+    AIModel(
+        id="o3",
+        provider="openai",
+        model="o3",
+        category="reasoning",
+        display_name="OpenAI o3",
+        description="Advanced reasoning model",
+        priority=3,
+        quality="ultra",
+        speed="medium",
+        cost="high",
+        max_context=200000,
+        supports_text=True,
+        supports_reasoning=True,
+        supports_streaming=True,
+        supports_json_mode=True,
+        supports_function_calling=True,
+        fallback=(
+            "gpt-5.5",
+        ),
+    ),
+
+    AIModel(
+        id="o4-mini",
+        provider="openai",
+        model="o4-mini",
+        category="reasoning",
+        display_name="OpenAI o4-mini",
+        description="Fast reasoning model",
+        priority=4,
+        quality="high",
+        speed="ultra",
+        cost="low",
+        max_context=200000,
+        supports_text=True,
+        supports_reasoning=True,
+        supports_streaming=True,
+        supports_json_mode=True,
+        supports_function_calling=True,
+        fallback=(
+            "gpt-5-mini",
+        ),
+    ),
+
+    AIModel(
+    id="gpt-image-1",
+    provider="openai",
+    model="gpt-image-1",
+    category="image",
+    display_name="GPT Image 1",
+    description="OpenAI Image Generation",
+    priority=20,
+    quality="ultra",
+    speed="medium",
+    cost="high",
+    supports_image=True,
+    max_images=8,
+    fallback=(
+    "imagen-4",
+    "together-flux",
+    "openrouter-flux",
+)
+),
+]

@@ -1,10 +1,17 @@
 export interface User {
   id: string;
-  email: string;
   full_name: string;
+  email: string;
+  avatar_url: string | null;
   is_active: boolean;
+  is_superuser: boolean;
+  is_email_verified: boolean;
   created_at: string;
-  updated_at: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
 }
 
 export interface RegisterRequest {
@@ -13,25 +20,35 @@ export interface RegisterRequest {
   password: string;
 }
 
-export interface LoginRequest {
+export interface RegisterResponse {
+  detail: string;
   email: string;
-  password: string;
 }
 
-export interface AuthTokens {
+export interface TokenResponse {
   access_token: string;
   token_type: string;
 }
 
-export interface AuthState {
-  user: User | null;
-  tokens: AuthTokens | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
+export interface VerifyEmailRequest {
+  email: string;
+  otp_code: string;
 }
 
-export type LoginResponse = AuthTokens;
+export interface UpdateProfileRequest {
+  full_name?: string;
+  avatar_url?: string;
+}
 
-export interface RegisterResponse {
-  message: string;
+export interface ChangePasswordRequest {
+  current_password: string;
+  new_password: string;
+}
+
+export interface AuthState {
+  user: User | null;
+  tokens: TokenResponse | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  isHydrated: boolean;
 }

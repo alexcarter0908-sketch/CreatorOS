@@ -1,7 +1,12 @@
-from app.services.providers.base_provider import BaseProvider
+from typing import Any
 
 
-class MockProvider(BaseProvider):
+class MockProvider:
+    """
+    Development fallback provider.
+
+    Used when no real AI provider is configured.
+    """
 
     name = "mock"
 
@@ -14,9 +19,42 @@ class MockProvider(BaseProvider):
         return {
             "success": True,
             "provider": self.name,
-            "model": "mock-v1",
-            "result": {
-                "prompt": prompt,
-                "message": "Mock provider executed successfully."
+            "model": "mock-model",
+            "result": f"[MOCK RESPONSE]\n\n{prompt}",
+            "metadata": {
+                "mock": True,
             },
         }
+
+    async def chat(self, messages, **kwargs):
+
+        return "Mock chat response."
+
+    async def image(self, prompt: str, **kwargs):
+
+        return {
+            "url": "",
+            "prompt": prompt,
+        }
+
+    async def video(self, prompt: str, **kwargs):
+
+        return {
+            "url": "",
+            "prompt": prompt,
+        }
+
+    async def audio(self, prompt: str, **kwargs):
+
+        return {
+            "url": "",
+            "prompt": prompt,
+        }
+
+    async def embeddings(self, text: str):
+
+        return []
+
+    async def health_check(self):
+
+        return True

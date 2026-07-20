@@ -1,0 +1,15 @@
+﻿.venv
+__pycache__
+*.pyc
+.env
+.git
+.gitignore
+*.db
+storage/
+db_context_dump.txt
+prompt_context_dump.txt
+wiring_context_dump.txt
+wiring_context_dump_2.txt
+result.txt
+test_audio.py
+venv

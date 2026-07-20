@@ -1,3 +1,5 @@
-from .auth import *
-from .user import *
-from .project import *
+"""
+Schemas package.
+"""
+
+__all__ = []

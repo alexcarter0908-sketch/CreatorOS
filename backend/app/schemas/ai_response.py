@@ -1,18 +1,28 @@
+from __future__ import annotations
+
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
 class AIResponse(BaseModel):
-    success: bool
+    """
+    Standard response returned by every AI provider.
+
+    Every provider (OpenAI, Gemini, Claude, Groq,
+    DeepSeek, Fal, Replicate, Runway, Kling,
+    ElevenLabs, etc.) must return this schema.
+    """
+
+    success: bool = True
 
     provider: str
 
     model: str
 
-    result: Any
+    result: Any = None
 
-    language: str | None = None
+    language: str = "auto"
 
     execution_time: float | None = None
 

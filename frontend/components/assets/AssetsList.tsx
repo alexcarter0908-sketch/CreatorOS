@@ -1,0 +1,145 @@
+﻿"use client";
+
+import { useEffect, useState } from "react";
+import { AlertCircle, CheckCircle2, Clock, FileWarning } from "lucide-react";
+
+import MainLayout from "@/components/layout/MainLayout";
+import { listAssets } from "@/features/assets/services/asset.service";
+import type { Asset, AssetType } from "@/features/assets/types/asset";
+
+const STATUS_CONFIG = {
+  pending: { label: "Pending", className: "bg-yellow-100 text-yellow-700", icon: Clock },
+  completed: { label: "Completed", className: "bg-green-100 text-green-700", icon: CheckCircle2 },
+  failed: { label: "Failed", className: "bg-red-100 text-red-700", icon: AlertCircle },
+};
+
+interface AssetsListProps {
+  assetType: AssetType;
+  title: string;
+  subtitle: string;
+}
+
+function getGeneratedText(asset: Asset): string | null {
+  const meta = asset.extra_metadata;
+  if (meta && typeof meta === "object" && "text" in meta) {
+    const value = (meta as Record<string, unknown>).text;
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value;
+    }
+  }
+  return null;
+}
+
+export default function AssetsList({ assetType, title, subtitle }: AssetsListProps) {
+  const [assets, setAssets] = useState([] as Asset[]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null as string | null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const data = await listAssets(assetType);
+        if (!cancelled) setAssets(data);
+      } catch {
+        if (!cancelled) setError("Failed to load assets.");
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [assetType]);
+
+  return (
+    <MainLayout>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-foreground">{title}</h1>
+        <p className="mt-2 text-muted-foreground">{subtitle}</p>
+      </div>
+
+      {isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
+      {error && <p className="text-sm text-red-500">{error}</p>}
+
+      {!isLoading && !error && assets.length === 0 && (
+        <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
+          Nothing generated yet. Use the Command Center to create one.
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {assets.map((asset) => {
+          const config = STATUS_CONFIG[asset.status] ?? STATUS_CONFIG.pending;
+          const StatusIcon = config.icon;
+          const fileUrl = asset.file_url;
+          const generatedText = getGeneratedText(asset);
+
+          return (
+            <div key={asset.id} className="rounded-xl border bg-card p-5 shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  {asset.prompt ?? "(no prompt)"}
+                </p>
+
+                <span className={"flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold " + config.className}>
+                  <StatusIcon className="h-3.5 w-3.5" />
+                  {config.label}
+                </span>
+              </div>
+
+              {generatedText && (
+                <p className="mt-2 whitespace-pre-wrap text-sm text-foreground">
+                  {generatedText}
+                </p>
+              )}
+
+              {!generatedText && asset.status === "pending" && (
+                <p className="mt-2 text-sm text-muted-foreground">Generating...</p>
+              )}
+
+              <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
+                <span>{asset.provider} / {asset.model_id}</span>
+                <span>{new Date(asset.created_at).toLocaleString()}</span>
+              </div>
+
+              {asset.status === "failed" && asset.error_message && (
+                <div className="mt-3 flex items-start gap-2 rounded-lg bg-red-50 p-3 text-xs text-red-600">
+                  <FileWarning className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>{asset.error_message}</span>
+                </div>
+              )}
+
+              {fileUrl ? (
+                assetType === "image" ? (
+                  <img
+                    src={fileUrl}
+                    alt={asset.prompt ?? "Generated image"}
+                    className="mt-3 max-h-64 rounded-lg border object-cover"
+                  />
+                ) : assetType === "video" ? (
+                  <video
+                    src={fileUrl}
+                    controls
+                    className="mt-3 max-h-64 w-full rounded-lg border"
+                  />
+                ) : assetType === "audio" ? (
+                  <audio src={fileUrl} controls className="mt-3 w-full" />
+                ) : (
+                  <a href={fileUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block text-xs font-medium text-blue-600 hover:underline">
+                    View asset
+                  </a>
+                )
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </MainLayout>
+  );
+}

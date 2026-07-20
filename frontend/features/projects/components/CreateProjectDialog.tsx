@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 
 import {
   Dialog,
@@ -8,7 +9,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,33 +20,36 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
-export default function CreateProjectDialog({
-  open,
-  onOpenChange,
-}: Props) {
+export default function CreateProjectDialog({ open, onOpenChange }: Props) {
   const addProject = useProjectStore((state) => state.addProject);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [brandVoice, setBrandVoice] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleCreate() {
-    if (!name.trim() || !description.trim()) {
-      return;
+  async function handleCreate() {
+    if (!name.trim()) return;
+
+    setIsSubmitting(true);
+
+    try {
+      await addProject({
+        name: name.trim(),
+        description: description.trim() || undefined,
+        brand_voice: brandVoice.trim() || undefined,
+      });
+
+      toast.success("Project created.");
+      setName("");
+      setDescription("");
+      setBrandVoice("");
+      onOpenChange(false);
+    } catch {
+      toast.error("Failed to create project.");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    addProject({
-      id: crypto.randomUUID(),
-      name,
-      description,
-      status: "Draft",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-
-    setName("");
-    setDescription("");
-
-    onOpenChange(false);
   }
 
   return (
@@ -69,11 +72,14 @@ export default function CreateProjectDialog({
             onChange={(e) => setDescription(e.target.value)}
           />
 
-          <Button
-            className="w-full"
-            onClick={handleCreate}
-          >
-            Create Project
+          <Textarea
+            placeholder="Brand Voice (optional) - e.g. casual and friendly, always use emojis, no formal language"
+            value={brandVoice}
+            onChange={(e) => setBrandVoice(e.target.value)}
+          />
+
+          <Button className="w-full" onClick={handleCreate} disabled={isSubmitting}>
+            {isSubmitting ? "Creating..." : "Create Project"}
           </Button>
         </div>
       </DialogContent>

@@ -15,13 +15,8 @@ provider_manager = ProviderManager()
 @router.get("/health")
 async def provider_health():
 
-    selection = provider_manager.select(
-        task="text",
-    )
-
     return {
         "status": "healthy",
-        "default_provider": selection.provider,
-        "default_model": selection.model,
-        "reason": selection.reason,
+        "available_providers": provider_manager.available_providers(),
+        "health": await provider_manager.health_report(),
     }

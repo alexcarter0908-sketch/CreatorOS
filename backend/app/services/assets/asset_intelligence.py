@@ -1,52 +1,58 @@
-from dataclasses import dataclass
+from __future__ import annotations
 
-from app.services.assets.detectors.asset_detector import AssetDetector
-from app.services.assets.engines.resolution_engine import ResolutionEngine
-from app.services.providers.manager.provider_manager import ProviderManager
+from app.schemas.ai_request import AIRequest
 
-
-@dataclass(slots=True)
-class AssetIntelligenceResult:
-    asset_type: str
-    platform: str
-    orientation: str
-    width: int
-    height: int
-    output_format: str
-    provider: str
-    model: str
-    quality: str
+from app.services.providers.manager.provider_manager import (
+    ProviderManager,
+)
 
 
 class AssetIntelligence:
+    """
+    Central AI execution layer.
+
+    Every agent communicates with AI providers through this class.
+
+    Flow
+    ----
+    Agent
+        ↓
+    AssetIntelligence
+        ↓
+    ProviderManager
+        ↓
+    ProviderExecutor
+        ↓
+    AI Provider
+    """
 
     def __init__(self):
 
-        self.detector = AssetDetector()
-        self.resolution_engine = ResolutionEngine()
         self.provider_manager = ProviderManager()
 
-    def analyze(
+    # ---------------------------------------------------------
+
+    async def generate(
         self,
-        prompt: str,
-    ) -> AssetIntelligenceResult:
+        request: AIRequest,
+    ) -> dict:
 
-        detection = self.detector.detect(prompt)
-
-        resolution = self.resolution_engine.resolve(prompt)
-
-        provider = self.provider_manager.select(
-            detection.asset_type,
+        return await self.provider_manager.generate(
+            request,
         )
 
-        return AssetIntelligenceResult(
-            asset_type=detection.asset_type,
-            platform=detection.platform,
-            orientation=detection.orientation,
-            width=resolution.width,
-            height=resolution.height,
-            output_format=resolution.format,
-            provider=provider.provider,
-            model=provider.model,
-            quality=provider.quality,
-        )
+    # ---------------------------------------------------------
+
+    async def health_report(
+        self,
+    ) -> dict[str, bool]:
+
+        return await self.provider_manager.health_report()
+
+    # ---------------------------------------------------------
+
+    def available_providers(
+        self,
+    ) -> list[str]:
+
+        return self.provider_manager.available_providers()

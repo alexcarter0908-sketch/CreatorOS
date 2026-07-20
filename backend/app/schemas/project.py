@@ -13,6 +13,10 @@ class CreateProjectRequest(BaseModel):
         default=None,
         max_length=5000,
     )
+    brand_voice: str | None = Field(
+        default=None,
+        max_length=3000,
+    )
 
 
 class UpdateProjectRequest(BaseModel):
@@ -28,6 +32,10 @@ class UpdateProjectRequest(BaseModel):
     )
 
     status: str | None = None
+    brand_voice: str | None = Field(
+        default=None,
+        max_length=3000,
+    )
 
 
 class ProjectResponse(BaseModel):
@@ -40,5 +48,6 @@ class ProjectResponse(BaseModel):
     name: str
     description: str | None
     status: str
+    brand_voice: str | None
     created_at: str
     updated_at: str

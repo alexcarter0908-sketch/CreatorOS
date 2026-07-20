@@ -1,8 +1,16 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
 
+from app.core.security import hash_password, verify_password
 from app.database.models import User
+from app.database.session.database import get_db
 from app.dependencies.auth import get_current_user
-from app.schemas.user import UserProfileResponse
+from app.repositories.user_repository import UserRepository
+from app.schemas.user import (
+    ChangePasswordRequest,
+    UpdateProfileRequest,
+    UserProfileResponse,
+)
 
 router = APIRouter(
     prefix="/users",
@@ -18,3 +26,47 @@ def get_me(
     current_user: User = Depends(get_current_user),
 ):
     return current_user
+
+
+@router.patch(
+    "/me",
+    response_model=UserProfileResponse,
+)
+def update_me(
+    request: UpdateProfileRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if request.full_name is not None:
+        current_user.full_name = request.full_name
+    if request.avatar_url is not None:
+        current_user.avatar_url = request.avatar_url
+
+    UserRepository(db).update(current_user)
+    return current_user
+
+
+@router.post(
+    "/me/change-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def change_password(
+    request: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not current_user.password_hash:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This account uses Google Sign-In and has no password to change.",
+        )
+
+    if not verify_password(request.current_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Current password is incorrect.",
+        )
+
+    current_user.password_hash = hash_password(request.new_password)
+    UserRepository(db).update(current_user)
+    return None

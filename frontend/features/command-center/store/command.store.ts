@@ -1,17 +1,24 @@
-import { create } from "zustand";
-
-import type { Command } from "../types/command";
+﻿import { create } from "zustand";
+import type { ChatMessage } from "../types/command";
 
 interface CommandStore {
-  commands: Command[];
-  addCommand: (command: Command) => void;
+  messages: ChatMessage[];
+  addMessage: (message: ChatMessage) => void;
+  updateMessage: (id: string, updates: Partial<ChatMessage>) => void;
+  setMessages: (messages: ChatMessage[]) => void;
+  clearMessages: () => void;
 }
 
 export const useCommandStore = create<CommandStore>((set) => ({
-  commands: [],
-
-  addCommand: (command) =>
+  messages: [],
+  addMessage: (message) =>
     set((state) => ({
-      commands: [...state.commands, command],
+      messages: [...state.messages, message],
     })),
+  updateMessage: (id, updates) =>
+    set((state) => ({
+      messages: state.messages.map((m) => (m.id === id ? { ...m, ...updates } : m)),
+    })),
+  setMessages: (messages) => set({ messages }),
+  clearMessages: () => set({ messages: [] }),
 }));
