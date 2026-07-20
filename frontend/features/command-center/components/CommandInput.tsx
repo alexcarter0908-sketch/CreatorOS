@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
+import PublishToYouTubeButton from "@/components/publishing/PublishToYouTubeButton";
 import { useSearchParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import axios from "axios";
@@ -319,11 +320,13 @@ function GeneratedContentCard({
   content,
   assetType,
   fileUrl,
+  assetId,
   onCopy,
 }: {
   content: string;
   assetType: string;
   fileUrl?: string | null;
+  assetId?: string;
   onCopy: (t: string) => void;
 }) {
   const label = ASSET_TYPE_LABELS[assetType] ?? "Generated Content";
@@ -360,9 +363,14 @@ function GeneratedContentCard({
       <div className="max-h-[420px] overflow-y-auto p-4 text-[15px] leading-relaxed">
         {renderContent(content, onCopy, false)}
       </div>
+      {assetType === "video" && assetId ? (
+        <div className="border-t border-border px-3 py-2">
+          <PublishToYouTubeButton assetId={assetId} defaultTitle={content.slice(0, 80)} />
+        </div>
+      ) : null}
     </div>
   );
-}
+  }
 
 function AttachmentPreview({ attachment }: { attachment: ChatAttachment }) {
   if (attachment.kind === "image") {
@@ -723,6 +731,7 @@ export default function CommandInput() {
       content: text,
       status: asset.status === "failed" ? "failed" : "completed",
       assetType: asset.asset_type,
+        assetId: asset.id,
       fileUrl: asset.file_url,
       errorMessage: asset.error_message,
       sources,
@@ -940,6 +949,7 @@ export default function CommandInput() {
             assetType,
             fileUrl,
             errorMessage: firstFailedError,
+              assetId: videoStep?.asset_id || imageStep?.asset_id || textStep?.asset_id || undefined,
           });
 
           if (assetType) {
@@ -1084,7 +1094,8 @@ export default function CommandInput() {
                     content={message.content}
                     assetType={message.assetType as string}
                     fileUrl={message.fileUrl}
-                    onCopy={handleCopy}
+                    assetId={message.assetId}
+                      onCopy={handleCopy}
                   />
                 ) : message.status === "completed" && message.content ? (
                   renderContent(message.content, handleCopy, isUser)
@@ -1370,3 +1381,5 @@ export default function CommandInput() {
     </div>
   );
 }
+
+

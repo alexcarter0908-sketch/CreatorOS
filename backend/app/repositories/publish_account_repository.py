@@ -70,6 +70,13 @@ class PublishAccountRepository:
 
         return account
 
+    def get_by_id(self, account_id: str) -> PublishAccount | None:
+        return (
+            self.db.query(PublishAccount)
+            .filter(PublishAccount.id == account_id, PublishAccount.is_active.is_(True))
+            .first()
+        )
+
     def deactivate(self, account: PublishAccount) -> None:
         account.is_active = False
         self.db.add(account)
@@ -158,3 +165,4 @@ class PublishAccountRepository:
         self.db.commit()
         self.db.refresh(account)
         return account
+

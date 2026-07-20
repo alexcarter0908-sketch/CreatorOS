@@ -26,6 +26,7 @@ class YouTubeUploadRequest(BaseModel):
     description: str = ""
     tags: list[str] = Field(default_factory=list)
     privacy_status: str = "public"
+    account_id: str | None = None
 
 
 @router.get("/accounts")
@@ -115,6 +116,7 @@ def youtube_upload(
             description=request.description,
             tags=request.tags,
             privacy_status=request.privacy_status,
+            account_id=request.account_id,
         )
     except YouTubeNotConnectedError as exc:
         raise HTTPException(
@@ -165,4 +167,5 @@ def download_asset(
         media_type=asset.mime_type or "application/octet-stream",
         filename=download_name,
     )
+
 

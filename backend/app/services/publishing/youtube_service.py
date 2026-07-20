@@ -198,7 +198,7 @@ def upload_video(
     ):
         final_description = f"{final_description}\n\n#Shorts".strip()
 
-    creds = _load_credentials(db, owner_id)
+    creds = _load_credentials(db, owner_id, account_id)
     youtube = build("youtube", "v3", credentials=creds)
 
     body = {
@@ -237,4 +237,5 @@ def upload_video(
         "url": f"https://www.youtube.com/watch?v={video_id}",
         "is_short": is_short,
     }
+
 

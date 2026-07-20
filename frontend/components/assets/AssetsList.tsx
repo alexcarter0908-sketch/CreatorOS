@@ -6,6 +6,7 @@ import { AlertCircle, CheckCircle2, Clock, FileWarning } from "lucide-react";
 import MainLayout from "@/components/layout/MainLayout";
 import { listAssets } from "@/features/assets/services/asset.service";
 import type { Asset, AssetType } from "@/features/assets/types/asset";
+import PublishToYouTubeButton from "@/components/publishing/PublishToYouTubeButton";
 
 const STATUS_CONFIG = {
   pending: { label: "Pending", className: "bg-yellow-100 text-yellow-700", icon: Clock },
@@ -135,6 +136,11 @@ export default function AssetsList({ assetType, title, subtitle }: AssetsListPro
                     View asset
                   </a>
                 )
+              ) : null}
+              {assetType === "video" ? (
+                <div className="mt-3">
+                  <PublishToYouTubeButton assetId={asset.id} defaultTitle={asset.prompt ?? "CreatorOS video"} />
+                </div>
               ) : null}
             </div>
           );

@@ -34,7 +34,9 @@ export interface ChatMessage {
   replyToText?: string;
   steps?: WorkflowStepInfo[];
   workflowId?: string;
+  assetId?: string;
   hasFailedSteps?: boolean;
   sources?: ChatSource[];
 }
+
 
