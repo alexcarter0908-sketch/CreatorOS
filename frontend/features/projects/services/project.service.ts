@@ -6,6 +6,11 @@ export async function listProjects(): Promise<Project[]> {
   return data;
 }
 
+export async function getProject(id: string): Promise<Project> {
+  const { data } = await apiClient.get<Project>(`/api/v1/projects/${id}`);
+  return data;
+}
+
 export async function createProject(
   payload: CreateProjectPayload
 ): Promise<Project> {

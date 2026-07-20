@@ -38,15 +38,16 @@ export default function RecentProjects() {
         )}
 
         {recent.map((project) => (
-          <div
+          <Link
             key={project.id}
+            href={`/projects/${project.id}`}
             className="flex items-center gap-4 rounded-xl border border-transparent p-3 transition-colors hover:border-border hover:bg-accent"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent">
               <FolderKanban className="h-5 w-5 text-primary" />
             </div>
             <span className="text-base font-medium text-foreground">{project.name}</span>
-          </div>
+          </Link>
         ))}
       </div>
     </div>

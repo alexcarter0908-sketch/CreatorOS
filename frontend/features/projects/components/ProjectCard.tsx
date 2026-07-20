@@ -1,7 +1,9 @@
-﻿import { FolderKanban } from "lucide-react";
+﻿import Link from "next/link";
+import { FolderKanban } from "lucide-react";
 import type { ProjectStatus } from "../types/project";
 
 interface ProjectCardProps {
+  id: string;
   title: string;
   description: string;
   status: ProjectStatus;
@@ -19,9 +21,12 @@ const STATUS_LABELS: Record<ProjectStatus, string> = {
   completed: "Completed",
 };
 
-export default function ProjectCard({ title, description, status }: ProjectCardProps) {
+export default function ProjectCard({ id, title, description, status }: ProjectCardProps) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg">
+    <Link
+      href={`/projects/${id}`}
+      className="block rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg"
+    >
       <div className="flex items-center justify-between">
         <FolderKanban className="h-8 w-8 text-blue-600" />
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${STATUS_STYLES[status]}`}>
@@ -31,6 +36,6 @@ export default function ProjectCard({ title, description, status }: ProjectCardP
 
       <h3 className="mt-5 text-xl font-semibold text-foreground">{title}</h3>
       <p className="mt-2 text-sm text-muted-foreground">{description}</p>
-    </div>
+    </Link>
   );
 }

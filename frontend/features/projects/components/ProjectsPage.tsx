@@ -40,6 +40,7 @@ export default function ProjectsPage() {
         {projects.map((project) => (
           <ProjectCard
             key={project.id}
+            id={project.id}
             title={project.name}
             description={project.description ?? ""}
             status={project.status}
