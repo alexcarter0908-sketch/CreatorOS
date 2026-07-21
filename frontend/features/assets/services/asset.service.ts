@@ -1,4 +1,4 @@
-﻿import apiClient from "@/lib/api/client";
+import apiClient from "@/lib/api/client";
 import type { Asset, AssetType } from "../types/asset";
 
 export async function listAssets(assetType?: AssetType): Promise<Asset[]> {
@@ -17,28 +17,31 @@ export async function deleteAsset(id: string): Promise<void> {
   await apiClient.delete("/api/v1/assets/" + id);
 }
 
-export async function updateAssetText(id: string, text: string): Promise<Asset> {
-  const { data } = await apiClient.patch<Asset>("/api/v1/assets/" + id, { text });
-  return data;
+function filenameFromContentDisposition(
+  header: string | undefined,
+  fallback: string
+): string {
+  if (!header) return fallback;
+  const match = header.match(/filename="?([^";]+)"?/i);
+  return match ? match[1] : fallback;
 }
 
-export async function retryAsset(id: string, prompt?: string): Promise<Asset> {
-  const { data } = await apiClient.post<Asset>(
-    "/api/v1/assets/" + id + "/retry",
-    prompt ? { prompt } : {}
+export async function downloadAsset(assetId: string): Promise<void> {
+  const response = await apiClient.get(`/api/v1/publish/download/${assetId}`, {
+    responseType: "blob",
+  });
+
+  const filename = filenameFromContentDisposition(
+    response.headers["content-disposition"],
+    `creatoros_${assetId}`
   );
-  return data;
-}
 
-export interface GenerateVideoResponse {
-  workflow_id: string;
-  status: string;
-  source_asset_id: string;
-}
-
-export async function generateVideoFromScript(id: string): Promise<GenerateVideoResponse> {
-  const { data } = await apiClient.post<GenerateVideoResponse>(
-    "/api/v1/assets/" + id + "/generate-video"
-  );
-  return data;
+  const blobUrl = window.URL.createObjectURL(response.data);
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(blobUrl);
 }
