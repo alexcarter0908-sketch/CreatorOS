@@ -1,4 +1,4 @@
-export type ProjectStatus = "draft" | "active" | "completed";
+﻿export type ProjectStatus = "draft" | "active" | "completed";
 
 export interface Project {
   id: string;
@@ -14,4 +14,11 @@ export interface CreateProjectPayload {
   name: string;
   description?: string;
   brand_voice?: string;
+}
+
+export interface UpdateProjectPayload {
+  name?: string;
+  description?: string | null;
+  status?: ProjectStatus;
+  brand_voice?: string | null;
 }

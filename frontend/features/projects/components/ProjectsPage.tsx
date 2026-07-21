@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect } from "react";
 
@@ -38,13 +38,7 @@ export default function ProjectsPage() {
 
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {projects.map((project) => (
-          <ProjectCard
-            key={project.id}
-            id={project.id}
-            title={project.name}
-            description={project.description ?? ""}
-            status={project.status}
-          />
+          <ProjectCard key={project.id} project={project} />
         ))}
       </div>
     </main>

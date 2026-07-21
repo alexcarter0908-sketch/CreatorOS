@@ -1,4 +1,10 @@
 export { default as ProjectsPage } from "./components/ProjectsPage";
 export { default as ProjectDetail } from "./components/ProjectDetail";
+export { default as ProjectCard } from "./components/ProjectCard";
+export { default as CreateProjectButton } from "./components/CreateProjectButton";
+export { default as CreateProjectDialog } from "./components/CreateProjectDialog";
+export { default as EditProjectDialog } from "./components/EditProjectDialog";
+export { default as DeleteProjectDialog } from "./components/DeleteProjectDialog";
 export * from "./types/project";
 export * from "./store/project.store";
+export * from "./services/project.service";
