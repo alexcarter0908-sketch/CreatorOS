@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/button";
 import { apiClient } from "../../lib/api/client";
 
 const COMING_SOON_PLATFORMS = [
-  { name: "Instagram", icon: Instagram, color: "text-pink-600", bg: "bg-pink-50" },
-  { name: "TikTok", icon: MessageCircle, color: "text-slate-900", bg: "bg-slate-100" },
-  { name: "Facebook", icon: Facebook, color: "text-blue-600", bg: "bg-blue-50" },
-  { name: "X (Twitter)", icon: Twitter, color: "text-slate-900", bg: "bg-slate-100" },
-  { name: "WhatsApp", icon: MessageCircle, color: "text-green-600", bg: "bg-green-50" },
+  { name: "Instagram", icon: Instagram },
+  { name: "TikTok", icon: MessageCircle },
+  { name: "Facebook", icon: Facebook },
+  { name: "X (Twitter)", icon: Twitter },
+  { name: "WhatsApp", icon: MessageCircle },
 ];
 
 interface ConnectedAccount {
@@ -106,7 +106,7 @@ export default function ConnectionsPage() {
               className="flex items-center justify-between rounded-xl border border-border bg-card p-4 opacity-60"
             >
               <div className="flex items-center gap-3">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${platform.bg} ${platform.color}`}>
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent text-accent-foreground">
                   <Icon className="h-5 w-5" />
                 </div>
                 <p className="font-medium text-foreground">{platform.name}</p>
@@ -121,5 +121,6 @@ export default function ConnectionsPage() {
     </div>
   );
 }
+
 
 

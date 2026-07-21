@@ -4,14 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import MainLayout from "@/components/layout/MainLayout";
-import BrandWatermark from "@/components/common/BrandWatermark";
 import StatsCard from "@/components/dashboard/StatsCard";
 import QuickActions from "@/components/dashboard/QuickActions";
 import RecentProjects from "@/components/dashboard/RecentProjects";
 import ContentPipeline from "@/components/dashboard/ContentPipeline";
 import RecentActivity from "@/components/dashboard/RecentActivity";
 import AssetLibrary from "@/components/dashboard/AssetLibrary";
-import AnalyticsSnapshot from "@/components/dashboard/AnalyticsSnapshot";
 
 import { useDashboardStats } from "@/lib/hooks/useDashboardStats";
 import { useAuthStore } from "@/features/auth/store/auth.store";
@@ -27,8 +25,6 @@ import {
   ArrowRight,
 } from "lucide-react";
 
-import "@/styles/console-theme.css";
-
 export default function DashboardPage() {
   const stats = useDashboardStats();
   const user = useAuthStore((state) => state.user);
@@ -43,9 +39,7 @@ export default function DashboardPage() {
 
   return (
     <MainLayout>
-      <div className="console-theme relative isolate -m-8 min-h-[calc(100%+4rem)] overflow-hidden p-8">
-        <BrandWatermark />
-        <div className="relative z-10">
+      <div className="-m-8 min-h-[calc(100%+4rem)] p-8">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="font-console-display text-3xl font-semibold tracking-tight text-foreground">
@@ -71,7 +65,6 @@ export default function DashboardPage() {
             icon={<FolderKanban className="h-6 w-6 text-blue-400" />}
             loading={stats.isLoading}
             href="/projects"
-            trendThisWeek={stats.projectsThisWeek}
           />
           <StatsCard
             title="Scripts"
@@ -80,7 +73,6 @@ export default function DashboardPage() {
             icon={<FileText className="h-6 w-6 text-green-400" />}
             loading={stats.isLoading}
             href="/scripts"
-            trendThisWeek={stats.scriptsThisWeek}
           />
           <StatsCard
             title="Videos"
@@ -89,7 +81,6 @@ export default function DashboardPage() {
             icon={<Video className="h-6 w-6 text-purple-400" />}
             loading={stats.isLoading}
             href="/videos"
-            trendThisWeek={stats.videosThisWeek}
           />
           <StatsCard
             title="Images"
@@ -98,7 +89,6 @@ export default function DashboardPage() {
             icon={<ImageIcon className="h-6 w-6 text-pink-400" />}
             loading={stats.isLoading}
             href="/thumbnails"
-            trendThisWeek={stats.imagesThisWeek}
           />
           <StatsCard
             title="Audio"
@@ -107,7 +97,6 @@ export default function DashboardPage() {
             icon={<AudioLines className="h-6 w-6 text-cyan-400" />}
             loading={stats.isLoading}
             href="/assets"
-            trendThisWeek={stats.audioThisWeek}
           />
           <StatsCard
             title="Credits"
@@ -134,14 +123,6 @@ export default function DashboardPage() {
         </Link>
 
         <div className="mt-8">
-          <AnalyticsSnapshot
-            dailyActivity={stats.dailyActivity}
-            contentMix={stats.contentMix}
-            isLoading={stats.isLoading}
-          />
-        </div>
-
-        <div className="mt-8">
           <QuickActions />
         </div>
 
@@ -162,7 +143,6 @@ export default function DashboardPage() {
 
         <div className="mt-8">
           <RecentProjects />
-        </div>
         </div>
       </div>
     </MainLayout>

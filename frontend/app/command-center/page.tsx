@@ -1,16 +1,15 @@
-"use client";
+﻿"use client";
 
 import { Suspense } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import AuthGuard from "@/components/auth/AuthGuard";
 import CommandInput from "@/features/command-center/components/CommandInput";
-import "@/styles/console-theme.css";
 
 export default function CommandCenterPage() {
   return (
     <AuthGuard>
-      <main className="console-theme flex h-screen flex-col overflow-hidden bg-background">
+      <main className="flex h-screen flex-col overflow-hidden bg-background">
         <header className="console-glow flex shrink-0 items-center justify-between gap-3 border-b border-border px-5 py-3">
           <div className="flex items-center gap-3">
             <Link
@@ -41,3 +40,4 @@ export default function CommandCenterPage() {
     </AuthGuard>
   );
 }
+

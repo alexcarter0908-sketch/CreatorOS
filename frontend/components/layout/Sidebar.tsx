@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { LogOut, ChevronRight, ChevronLeft, Sparkles } from "lucide-react";
+import { LogOut, ChevronRight, ChevronLeft, X } from "lucide-react";
 
 import { MAIN_NAVIGATION, SECONDARY_NAVIGATION } from "@/lib/navigation";
 import { useAuthStore } from "@/features/auth/store/auth.store";
@@ -10,19 +10,26 @@ import SidebarItem from "./SidebarItem";
 
 const APP_VERSION = "v1.0.0";
 
-export default function Sidebar() {
+interface SidebarProps {
+  open?: boolean;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ open = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const logout = useAuthStore((state) => state.logout);
   const [expanded, setExpanded] = useState(false);
 
+  const showLabels = expanded || open;
+
   return (
     <aside
-      className={`flex h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-all duration-200 ${
-        expanded ? "w-64" : "w-[72px]"
-      }`}
+      className={`fixed inset-y-0 left-0 z-40 flex h-screen w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-all duration-200 md:static md:z-auto md:translate-x-0 ${
+        open ? "translate-x-0" : "-translate-x-full"
+      } ${expanded ? "md:w-64" : "md:w-[72px]"}`}
     >
       <div className="flex items-center justify-between px-4 py-5">
-        {expanded ? (
+        {showLabels ? (
           <div className="flex items-center gap-2">
             <img src="/logo.png" alt="CreatorOS" className="h-8 w-8 shrink-0 rounded-lg object-cover" />
             <div className="leading-tight">
@@ -33,16 +40,29 @@ export default function Sidebar() {
         ) : (
           <img src="/logo.png" alt="CreatorOS" className="mx-auto h-8 w-8 rounded-lg object-cover" />
         )}
+
+        <button
+          onClick={onClose}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-sidebar-accent md:hidden"
+          title="Close menu"
+        >
+          <X size={16} />
+        </button>
       </div>
 
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="mx-3 mb-4 flex shrink-0 items-center justify-center rounded-lg border border-sidebar-border py-1.5 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        className="mx-3 mb-4 hidden shrink-0 items-center justify-center rounded-lg border border-sidebar-border py-1.5 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground md:flex"
       >
         {expanded ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
       </button>
 
-      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3">
+      <nav
+        className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3"
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest("a")) onClose?.();
+        }}
+      >
         {MAIN_NAVIGATION.map((item) => (
           <SidebarItem
             key={item.href}
@@ -50,7 +70,7 @@ export default function Sidebar() {
             label={item.title}
             icon={item.icon}
             active={pathname === item.href}
-            expanded={expanded}
+            expanded={showLabels}
           />
         ))}
 
@@ -62,7 +82,7 @@ export default function Sidebar() {
               label={item.title}
               icon={item.icon}
               active={pathname === item.href}
-              expanded={expanded}
+              expanded={showLabels}
             />
           ))}
         </div>
@@ -74,7 +94,7 @@ export default function Sidebar() {
         title="Logout"
       >
         <LogOut size={18} className="shrink-0" />
-        {expanded && <span className="text-sm font-medium">Logout</span>}
+        {showLabels && <span className="text-sm font-medium">Logout</span>}
       </button>
     </aside>
   );
