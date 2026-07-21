@@ -36,6 +36,7 @@ class AssetService:
         model_id: str,
         prompt: str | None = None,
         project_id: str | None = None,
+        source_asset_id: str | None = None,
     ) -> Asset:
         return self.repo.create(
             owner_id=owner_id,
@@ -45,6 +46,7 @@ class AssetService:
             prompt=prompt,
             project_id=project_id,
             status="pending",
+            source_asset_id=source_asset_id,
         )
 
     def complete(

@@ -31,12 +31,24 @@ class WorkflowService:
             project_id=project_id,
         )
 
-    async def run(self, workflow_id: str, owner_id: str) -> Workflow:
+    async def run(
+        self,
+        workflow_id: str,
+        owner_id: str,
+        seed_text: str | None = None,
+        source_asset_id: str | None = None,
+    ) -> Workflow:
         """
         Runs every step in order. A failed step is recorded with its
         error and the run continues to the next step - one bad step
         (e.g. a provider missing a permission) does not block the rest
         of the pipeline from being attempted.
+
+        seed_text / source_asset_id are optional: when provided, the
+        workflow's first {previous_output} substitution uses this text
+        instead of generating it from scratch, and any created assets
+        are linked back to that source asset. Both default to None, so
+        existing callers are unaffected.
 
         Final workflow.status is:
           - "completed"             if every step succeeded
@@ -51,7 +63,7 @@ class WorkflowService:
 
         self.repo.update_workflow_status(workflow, "running")
 
-        previous_output: str | None = None
+        previous_output: str | None = seed_text
         any_success = False
         any_failure = False
 
@@ -74,6 +86,7 @@ class WorkflowService:
                 model_id="auto",
                 prompt=prompt,
                 project_id=workflow.project_id,
+                source_asset_id=source_asset_id,
             )
 
             try:

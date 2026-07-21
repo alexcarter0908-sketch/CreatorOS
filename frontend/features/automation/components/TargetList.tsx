@@ -1,10 +1,11 @@
-﻿"use client";
+"use client";
 
 import { useEffect } from "react";
 import { Trash2, Zap, ZapOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useAutoTargetStore } from "../store/target.store";
+import { useProjectStore } from "@/features/projects/store/project.store";
 
 const ASSET_TYPE_LABELS: Record<string, string> = {
   text: "Script / Text",
@@ -13,10 +14,12 @@ const ASSET_TYPE_LABELS: Record<string, string> = {
   audio: "Audio / Voice",
 };
 
-function formatFrequency(hours: number): string {
-  if (hours >= 168) return "Weekly";
-  if (hours >= 24) return "Daily";
-  return `Every ${hours}h`;
+function formatSchedule(intervalDays: number, hour: number, minute: number): string {
+  const time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+
+  if (intervalDays === 1) return `Daily at ${time}`;
+  if (intervalDays === 7) return `Weekly at ${time}`;
+  return `Every ${intervalDays} days at ${time}`;
 }
 
 export default function TargetList() {
@@ -26,9 +29,13 @@ export default function TargetList() {
   const fetchTargets = useAutoTargetStore((state) => state.fetchTargets);
   const removeTarget = useAutoTargetStore((state) => state.removeTarget);
 
+  const projects = useProjectStore((state) => state.projects);
+  const fetchProjects = useProjectStore((state) => state.fetchProjects);
+
   useEffect(() => {
     fetchTargets();
-  }, [fetchTargets]);
+    fetchProjects();
+  }, [fetchTargets, fetchProjects]);
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">Loading automation targets...</p>;
@@ -48,54 +55,66 @@ export default function TargetList() {
 
   return (
     <div className="space-y-3">
-      {targets.map((target) => (
-        <div
-          key={target.id}
-          className="flex items-start justify-between gap-4 rounded-xl border bg-card p-5 shadow-sm"
-        >
-          <div className="flex items-start gap-3">
-            <div
-              className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-                target.is_active
-                  ? "bg-green-100 text-green-600"
-                  : "bg-muted text-muted-foreground"
-              }`}
-            >
-              {target.is_active ? (
-                <Zap className="h-4 w-4" />
-              ) : (
-                <ZapOff className="h-4 w-4" />
-              )}
-            </div>
+      {targets.map((target) => {
+        const project = projects.find((p) => p.id === target.project_id);
 
-            <div>
-              <p className="text-sm font-medium text-foreground">{target.prompt}</p>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                <span className="rounded-full bg-muted px-2 py-0.5">
-                  {ASSET_TYPE_LABELS[target.asset_type] ?? target.asset_type}
-                </span>
-                <span className="rounded-full bg-muted px-2 py-0.5">
-                  {formatFrequency(target.frequency_hours)}
-                </span>
-                <span>
-                  {target.last_run_at
-                    ? `Last run: ${new Date(target.last_run_at).toLocaleString()}`
-                    : "Not run yet"}
-                </span>
+        return (
+          <div
+            key={target.id}
+            className="flex items-start justify-between gap-4 rounded-xl border bg-card p-5 shadow-sm"
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                  target.is_active
+                    ? "bg-green-100 text-green-600"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {target.is_active ? (
+                  <Zap className="h-4 w-4" />
+                ) : (
+                  <ZapOff className="h-4 w-4" />
+                )}
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-foreground">{target.prompt}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span className="rounded-full bg-muted px-2 py-0.5">
+                    {ASSET_TYPE_LABELS[target.asset_type] ?? target.asset_type}
+                  </span>
+                  <span className="rounded-full bg-muted px-2 py-0.5">
+                    {formatSchedule(target.interval_days, target.run_at_hour, target.run_at_minute)}
+                  </span>
+                  {project && (
+                    <span className="rounded-full bg-muted px-2 py-0.5">{project.name}</span>
+                  )}
+                  {target.asset_type === "video" && target.auto_publish && (
+                    <span className="rounded-full bg-blue-50 px-2 py-0.5 text-blue-700">
+                      Auto-publish: {target.platforms || "youtube"}
+                    </span>
+                  )}
+                  <span>
+                    {target.last_run_at
+                      ? `Last run: ${new Date(target.last_run_at).toLocaleString()}`
+                      : "Not run yet"}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
 
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => removeTarget(target.id)}
-            className="text-red-500 hover:bg-red-50 hover:text-red-600"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      ))}
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => removeTarget(target.id)}
+              className="text-red-500 hover:bg-red-50 hover:text-red-600"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        );
+      })}
     </div>
   );
 }

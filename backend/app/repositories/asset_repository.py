@@ -21,6 +21,7 @@ class AssetRepository:
         prompt: str | None = None,
         project_id: str | None = None,
         status: str = "pending",
+        source_asset_id: str | None = None,
     ) -> Asset:
         asset = Asset(
             owner_id=owner_id,
@@ -30,6 +31,7 @@ class AssetRepository:
             model_id=model_id,
             prompt=prompt,
             status=status,
+            source_asset_id=source_asset_id,
         )
 
         self.db.add(asset)

@@ -80,6 +80,10 @@ class Asset(
         Text,
         nullable=True,
     )
+    source_asset_id: Mapped[str | None] = mapped_column(
+        ForeignKey("assets.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     owner = relationship(
         "User",
