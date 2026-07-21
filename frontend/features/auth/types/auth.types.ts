@@ -1,4 +1,4 @@
-export interface User {
+﻿export interface User {
   id: string;
   full_name: string;
   email: string;
@@ -6,6 +6,8 @@ export interface User {
   is_active: boolean;
   is_superuser: boolean;
   is_email_verified: boolean;
+  notify_email_digest: boolean;
+  notify_low_credit_email: boolean;
   created_at: string;
 }
 
@@ -38,11 +40,17 @@ export interface VerifyEmailRequest {
 export interface UpdateProfileRequest {
   full_name?: string;
   avatar_url?: string;
+  notify_email_digest?: boolean;
+  notify_low_credit_email?: boolean;
 }
 
 export interface ChangePasswordRequest {
   current_password: string;
   new_password: string;
+}
+
+export interface DeleteAccountRequest {
+  password?: string;
 }
 
 export interface AuthState {

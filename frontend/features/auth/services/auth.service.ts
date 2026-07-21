@@ -1,6 +1,7 @@
-import apiClient, { ACCESS_TOKEN_KEY } from "@/lib/api/client";
+﻿import apiClient, { ACCESS_TOKEN_KEY } from "@/lib/api/client";
 import type {
   ChangePasswordRequest,
+  DeleteAccountRequest,
   LoginRequest,
   RegisterRequest,
   RegisterResponse,
@@ -15,13 +16,6 @@ export async function login(payload: LoginRequest): Promise<TokenResponse> {
   form.set("username", payload.email);
   form.set("password", payload.password);
 
-  // BUG FIX: apiClient has a default "Content-Type: application/json"
-  // header. Passing an *empty* headers object here did NOT clear that
-  // default, so this request was going out as JSON even though the body
-  // was URL-encoded form data. The backend's OAuth2 form parser couldn't
-  // read username/password from a JSON-labeled body, so login failed
-  // every time - even with the correct password. Explicitly setting the
-  // correct Content-Type below fixes that.
   const { data } = await apiClient.post<TokenResponse>(
     "/api/v1/auth/login",
     form,
@@ -68,4 +62,9 @@ export async function updateProfile(payload: UpdateProfileRequest): Promise<User
 
 export async function changePassword(payload: ChangePasswordRequest): Promise<void> {
   await apiClient.post("/api/v1/users/me/change-password", payload);
+}
+
+export async function deleteAccount(payload: DeleteAccountRequest): Promise<void> {
+  await apiClient.delete("/api/v1/users/me", { data: payload });
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
 }

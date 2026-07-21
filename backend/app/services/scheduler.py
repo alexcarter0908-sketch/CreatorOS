@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
 import logging
@@ -13,6 +13,7 @@ from app.services.orchestrator.ai_orchestrator import AIOrchestrator
 from app.services.orchestrator.full_pipeline import run_full_pipeline
 from apscheduler.triggers.cron import CronTrigger
 from app.services.reports.usage_report_service import run_monthly_usage_reports
+from app.services.reports.daily_digest_service import run_daily_digest_emails
 
 logger = logging.getLogger("auto_scheduler")
 
@@ -101,9 +102,16 @@ def start_scheduler() -> None:
             id="monthly_usage_reports",
             replace_existing=True,
         )
+        scheduler.add_job(
+            run_daily_digest_emails,
+            CronTrigger(hour=7, minute=0),
+            id="daily_digest_emails",
+            replace_existing=True,
+        )
         scheduler.start()
         logger.info("Auto-target scheduler started (checks every 5 minutes).")
         logger.info("Monthly usage report job scheduled (1st of each month, 06:00).")
+        logger.info("Daily digest email job scheduled (every day, 07:00).")
 
 
 def stop_scheduler() -> None:

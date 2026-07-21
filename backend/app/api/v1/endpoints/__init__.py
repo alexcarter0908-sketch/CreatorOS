@@ -1,4 +1,4 @@
-from .auth import router as auth_router
+﻿from .auth import router as auth_router
 from .users import router as users_router
 from .projects import router as projects_router
 from .commands import router as commands_router
@@ -14,6 +14,7 @@ from .conversations import router as conversations_router
 from .uploads import router as uploads_router
 from .knowledge import router as knowledge_router
 from .reports import router as reports_router
+from .notifications import router as notifications_router
 
 __all__ = [
     "auth_router",
@@ -31,4 +32,6 @@ __all__ = [
     "conversations_router",
     "uploads_router",
     "knowledge_router",
+    "reports_router",
+    "notifications_router",
 ]

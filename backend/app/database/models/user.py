@@ -63,6 +63,22 @@ class User(
         nullable=True,
     )
 
+    notify_email_digest: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+    )
+    notify_low_credit_email: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        nullable=False,
+    )
+    low_credit_alert_sent: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+    )
+
     projects = relationship(
         "Project",
         back_populates="owner",

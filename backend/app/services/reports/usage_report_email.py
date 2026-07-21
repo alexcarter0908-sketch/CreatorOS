@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import logging
 import smtplib
@@ -9,7 +9,7 @@ from app.core.config.settings import settings
 logger = logging.getLogger("usage_reports")
 
 
-def _render_html(user_name: str, month_label: str, summary: dict) -> str:
+def _render_html(user_name: str, period_label: str, summary: dict) -> str:
     rows = ""
     for item in summary["breakdown"]:
         rows += (
@@ -20,9 +20,9 @@ def _render_html(user_name: str, month_label: str, summary: dict) -> str:
     return f"""
     <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#222;">
       <h2 style="margin-bottom:4px;">Your CreatorOS Usage Report</h2>
-      <p style="color:#666;margin-top:0;">{month_label}</p>
+      <p style="color:#666;margin-top:0;">{period_label}</p>
       <p>Hi {user_name or "there"},</p>
-      <p>Here is a summary of what happened on your account in {month_label}:</p>
+      <p>Here is a summary of what happened on your account in {period_label}:</p>
       <table style="width:100%;border-collapse:collapse;margin:16px 0;">
         <thead>
           <tr>
@@ -47,11 +47,6 @@ def _render_html(user_name: str, month_label: str, summary: dict) -> str:
 
 
 def send_monthly_usage_report_email(to_email: str, user_name: str, month_label: str, summary: dict) -> None:
-    """
-    Reuses the same SMTP settings/pattern as email_service.py (without
-    modifying that file), so this is fully independent of the OTP flow
-    and cannot break it.
-    """
     if not settings.SMTP_USER or not settings.SMTP_PASSWORD:
         logger.warning("SMTP not configured - skipping usage report email to %s", to_email)
         return
@@ -61,6 +56,29 @@ def send_monthly_usage_report_email(to_email: str, user_name: str, month_label: 
     html_body = _render_html(user_name, month_label, summary)
     message = MIMEText(html_body, "html")
     message["Subject"] = f"Your CreatorOS Usage Report - {month_label}"
+    message["From"] = from_email
+    message["To"] = to_email
+
+    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
+        server.starttls()
+        server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+        server.sendmail(from_email, [to_email], message.as_string())
+
+
+def send_daily_digest_email(to_email: str, user_name: str, day_label: str, summary: dict) -> None:
+    """
+    Same rendering/SMTP path as the monthly report, just a different
+    subject line and called with a 1-day window instead of a month.
+    """
+    if not settings.SMTP_USER or not settings.SMTP_PASSWORD:
+        logger.warning("SMTP not configured - skipping daily digest email to %s", to_email)
+        return
+
+    from_email = settings.SMTP_FROM_EMAIL or settings.SMTP_USER
+
+    html_body = _render_html(user_name, day_label, summary)
+    message = MIMEText(html_body, "html")
+    message["Subject"] = f"Your CreatorOS Daily Digest - {day_label}"
     message["From"] = from_email
     message["To"] = to_email
 

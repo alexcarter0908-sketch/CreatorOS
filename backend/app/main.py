@@ -1,4 +1,4 @@
-from contextlib import asynccontextmanager
+﻿from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -20,6 +20,7 @@ from app.api.v1.endpoints import (
     uploads_router,
     knowledge_router,
     reports_router,
+    notifications_router,
 )
 from app.core.config.settings import settings
 from app.database.init_db import init_database
@@ -75,6 +76,7 @@ app.include_router(conversations_router, prefix=settings.API_V1_PREFIX)
 app.include_router(uploads_router, prefix=settings.API_V1_PREFIX)
 app.include_router(knowledge_router, prefix=settings.API_V1_PREFIX)
 app.include_router(reports_router, prefix=settings.API_V1_PREFIX)
+app.include_router(notifications_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get(
