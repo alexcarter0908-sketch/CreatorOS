@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+﻿from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database.session.database import get_db
 from app.dependencies.auth import get_current_user
+from app.repositories.asset_repository import AssetRepository
+from app.schemas.asset import AssetResponse
 from app.schemas.project import (
     CreateProjectRequest,
     UpdateProjectRequest,
@@ -68,6 +70,34 @@ def get_project(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         )
+
+
+@router.get(
+    "/{project_id}/assets",
+    response_model=list[AssetResponse],
+)
+def list_project_assets(
+    project_id: str,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    service = ProjectService(db)
+
+    try:
+        # Ensures the project exists and belongs to the current user
+        # before returning its assets.
+        service.get(
+            current_user.id,
+            project_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        )
+
+    repo = AssetRepository(db)
+    return repo.list_by_project(project_id)
 
 
 @router.patch(

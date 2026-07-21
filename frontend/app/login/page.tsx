@@ -1,9 +1,10 @@
+import AuthShell from "@/features/auth/components/AuthShell";
 import LoginForm from "@/features/auth/components/LoginForm";
 
 export default function LoginPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center">
+    <AuthShell variant="login">
       <LoginForm />
-    </main>
+    </AuthShell>
   );
 }

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -7,8 +7,12 @@ import MainLayout from "@/components/layout/MainLayout";
 import StatsCard from "@/components/dashboard/StatsCard";
 import QuickActions from "@/components/dashboard/QuickActions";
 import RecentProjects from "@/components/dashboard/RecentProjects";
+import ContentPipeline from "@/components/dashboard/ContentPipeline";
+import RecentActivity from "@/components/dashboard/RecentActivity";
+import AssetLibrary from "@/components/dashboard/AssetLibrary";
 
 import { useDashboardStats } from "@/lib/hooks/useDashboardStats";
+import { useAuthStore } from "@/features/auth/store/auth.store";
 
 import {
   FolderKanban,
@@ -25,9 +29,9 @@ import "@/styles/console-theme.css";
 
 export default function DashboardPage() {
   const stats = useDashboardStats();
+  const user = useAuthStore((state) => state.user);
+  const firstName = user?.full_name?.trim().split(/\s+/)[0] || "there";
 
-  // Purely cosmetic live clock for the console header - client-only to
-  // avoid SSR/client markup mismatches, doesn't touch any data fetching.
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
     setNow(new Date());
@@ -38,11 +42,10 @@ export default function DashboardPage() {
   return (
     <MainLayout>
       <div className="console-theme -m-8 min-h-[calc(100%+4rem)] p-8">
-        {/* Header */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="font-console-display text-3xl font-semibold tracking-tight text-foreground">
-              Welcome back, Alex
+              Welcome back, {firstName}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Here&apos;s what&apos;s happening with your creator journey today.
@@ -56,7 +59,6 @@ export default function DashboardPage() {
           ) : null}
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
           <StatsCard
             title="Projects"
@@ -108,8 +110,6 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* Command Center entry point - same destination/behavior as before (Link to /command-center),
-            just restyled to look like an inline console prompt instead of a gradient banner. */}
         <Link
           href="/command-center"
           className="console-glow mt-6 flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-5 py-4 text-left shadow-sm transition-colors hover:border-primary/40"
@@ -126,6 +126,21 @@ export default function DashboardPage() {
 
         <div className="mt-8">
           <QuickActions />
+        </div>
+
+        <div className="mt-8">
+          <ContentPipeline />
+        </div>
+
+        <div className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[1.15fr_1fr]">
+          <RecentActivity />
+          <AssetLibrary
+            scripts={stats.scripts}
+            images={stats.images}
+            videos={stats.videos}
+            audio={stats.audio}
+            isLoading={stats.isLoading}
+          />
         </div>
 
         <div className="mt-8">
