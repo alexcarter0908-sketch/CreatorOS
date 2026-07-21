@@ -65,7 +65,7 @@ export default function ContentPipeline() {
   return (
     <div className="rounded-2xl border border-border bg-card shadow-sm">
       <div className="flex items-center justify-between p-7 pb-5">
-        <h2 className="text-xl font-semibold tracking-tight text-foreground">
+        <h2 className="font-console-display text-xl font-semibold tracking-tight text-foreground">
           Content Pipeline
           {workflow && (
             <span className="ml-2 font-normal text-muted-foreground">— {workflow.name}</span>

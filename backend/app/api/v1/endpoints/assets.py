@@ -157,6 +157,7 @@ async def retry_asset(
             asset_type=asset.asset_type,
             project_id=asset.project_id,
             owner_id=current_user.id,
+            metadata={"raw_user_message": prompt},
         )
         result = await orchestrator.execute(ai_request)
 

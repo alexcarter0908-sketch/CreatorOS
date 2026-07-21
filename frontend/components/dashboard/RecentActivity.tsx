@@ -67,7 +67,7 @@ export default function RecentActivity() {
   return (
     <div className="rounded-2xl border border-border bg-card p-7 shadow-sm">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold tracking-tight text-foreground">Recent Activity</h2>
+        <h2 className="font-console-display text-xl font-semibold tracking-tight text-foreground">Recent Activity</h2>
         <Link href="/assets" className="text-sm font-medium text-primary hover:underline">
           View all
         </Link>

@@ -20,7 +20,7 @@ export default function RecentProjects() {
   return (
     <div className="rounded-2xl border border-border bg-card p-7 shadow-sm">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold tracking-tight text-foreground">Recent Projects</h2>
+        <h2 className="font-console-display text-xl font-semibold tracking-tight text-foreground">Recent Projects</h2>
         <Link
           href="/projects"
           className="flex items-center gap-1 text-sm font-medium text-primary hover:underline"

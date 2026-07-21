@@ -1,3 +1,26 @@
+# CreatorOS - Auth showcase panel v2
+# - bigger header logo + full watermark logo in background
+# - removed the extra features list (kept it compact, no scroll)
+# - pipeline steps renamed: Searching topic, Writing script, Generating thumbnail, Optimizing SEO, Generating video
+# - after generation completes, a small "playing" video preview shows up
+#
+# Run this from your project ROOT (the folder that contains "frontend").
+
+$ErrorActionPreference = "Stop"
+
+function Write-FileSafely($path, $content) {
+    $dir = Split-Path $path -Parent
+    if ($dir -and -not (Test-Path $dir)) {
+        New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    }
+    if (Test-Path $path) {
+        Copy-Item $path "$path.bak" -Force
+    }
+    Set-Content -Path $path -Value $content -NoNewline
+    Write-Host "Wrote: $path"
+}
+
+$authShowcasePanel = @'
 "use client";
 
 import { useEffect, useState } from "react";
@@ -171,3 +194,9 @@ export default function AuthShowcasePanel({ variant }: { variant: Variant }) {
     </div>
   );
 }
+
+'@
+Write-FileSafely "frontend/features/auth/components/AuthShowcasePanel.tsx" $authShowcasePanel
+
+Write-Host ""
+Write-Host "Done. Restart your dev server (npm run dev) and open /login or /register." -ForegroundColor Green

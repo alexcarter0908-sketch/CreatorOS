@@ -28,7 +28,16 @@ class BaseAgent(ABC):
         raise NotImplementedError
 
     async def generate(self, request: AIRequest, skip_accuracy_instruction: bool = False) -> dict:
-        raw_user_message = request.prompt
+        # IMPORTANT: use the *original* human message for quote-detection,
+        # not request.prompt - by the time some agents (e.g. ScriptAgent)
+        # call generate(), request.prompt has already been overwritten
+        # with a big system-prompt template that itself contains quoted
+        # English example text (e.g. "exact voiceover line(s) in Roman
+        # Urdu + English mix"). Scanning that template instead of the
+        # real user message caused the whole response to be wrongly
+        # force-switched to English. request.metadata["raw_user_message"]
+        # is set once, before any agent touches request.prompt.
+        raw_user_message = request.metadata.get("raw_user_message") or request.prompt
         quoted_english_phrase = get_quoted_english_phrase(raw_user_message)
 
         prompt = with_conversation_history(request.prompt, request.history)

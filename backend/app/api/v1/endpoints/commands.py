@@ -327,6 +327,7 @@ async def run_command(
         longitude=request.longitude,
         brand_voice=_brand_voice,
         conversation_id=conversation.id,
+        metadata={"raw_user_message": request.command},
     )
     asset_service = AssetService(db)
     asset = asset_service.start(
@@ -486,6 +487,7 @@ async def run_command_stream(
                     project_id=request.project_id,
                     owner_id=owner_id,
                     history=history,
+                    metadata={"raw_user_message": request.command},
                 )
                 asset_service = AssetService(db)
                 asset = asset_service.start(
@@ -588,6 +590,26 @@ async def run_command_stream(
                 knowledge_context = ""
 
             chat_prompt = f"{knowledge_context}{search_context}\n\nUser message:\n\n{request.command}\n"
+            if asset_type == "script":
+                # This streaming shortcut skips ScriptAgent entirely (see
+                # comment above), which previously meant scripts silently
+                # lost the mandatory Roman Urdu + scene-format rules and
+                # came out as plain English with no structure. Re-apply
+                # the same non-negotiable rules here so behavior stays
+                # consistent regardless of which code path handles it.
+                chat_prompt = (
+                    chat_prompt
+                    + "\n\n[SCRIPT RULES - MANDATORY]\n"
+                    + "You are writing a short-form video script (reel/ad/YouTube Short). "
+                    + "You MUST write in Roman Urdu mixed with English (not Hindi, not pure "
+                    + "Urdu script) unless the user explicitly asked for English. Use clear "
+                    + "markdown scene headings for every scene, e.g. '### SCENE 1 - HOOK "
+                    + "(0:00-0:05s)', each with a Visual line, a VO line (the spoken line in "
+                    + "quotes), and an On-screen text line. End with a strong Call To Action. "
+                    + "Scale the number of scenes to the requested duration (default 45-60s).\n"
+                    + "Begin the script directly - do not restate, repeat, or quote back the "
+                    + "user's own instruction/request as if it were part of the script."
+                )
             full_prompt = with_conversation_history(chat_prompt, history)
             full_prompt = with_language_instruction(full_prompt)
             full_prompt = with_current_date(full_prompt)
@@ -633,6 +655,7 @@ async def run_command_stream(
                         project_id=request.project_id,
                         owner_id=owner_id,
                         history=history,
+                        metadata={"raw_user_message": request.command},
                     )
                     result = await orchestrator.execute(ai_request)
                     asset = asset_service.complete_from_provider_result(asset, result)

@@ -10,6 +10,12 @@ class ScriptAgent(BaseAgent):
         self,
         request: AIRequest,
     ) -> AIResponse:
+        # Preserve the true raw user message BEFORE we overwrite
+        # request.prompt with the big template below - base_agent's
+        # quote-detection needs the real message, not this template
+        # (which itself contains quoted English example text).
+        raw_user_message = request.prompt
+        request.metadata.setdefault("raw_user_message", raw_user_message)
         request.asset_type = "text"
 
         request.prompt = f"""
@@ -69,8 +75,11 @@ RULES (mandatory, never skip):
 5. VO lines must be natural spoken Roman Urdu + English mix - not textbook Urdu, not pure Hindi.
 6. The final scene must always end with a clear, strong Call To Action.
 7. Keep the overall structure investor/brand-presentation ready - clean headings, consistent formatting, no filler text.
+8. The line below is the TOPIC/BRIEF for this script, not something to repeat, quote, or narrate back. Never restate it verbatim as dialogue, on-screen text, or narration anywhere in your output - use it only to decide what the script is about.
 
-User Request: {request.prompt}
+Topic/Brief for this script: {raw_user_message}
+
+Begin the script now, starting directly with the "## ... - Video Script" heading.
 """
 
         request.metadata.update(

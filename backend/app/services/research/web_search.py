@@ -53,6 +53,84 @@ def _is_trusted(url: str) -> bool:
     return any(domain == p or domain.endswith(p) for p in _TRUSTED_DOMAIN_PATTERNS)
 
 
+# ------------------------------------------------------------
+# Relevance filter - a last line of defense against unrelated/garbage
+# results (e.g. a scraping fallback returning a dictionary entry for
+# an unrelated word when the real search was rate-limited or blocked).
+# Works the same regardless of which provider produced the result, so
+# it stays effective even when providers change or new ones are added.
+# ------------------------------------------------------------
+_STOPWORDS = {
+    "the", "a", "an", "of", "for", "to", "and", "or", "in", "on", "at",
+    "is", "are", "was", "were", "be", "today", "now", "current",
+    "latest", "please", "what", "when", "where", "who", "how", "me",
+    "my", "your", "you", "i", "do", "does", "did",
+    # common Roman Urdu grammar/function words - not useful as topic
+    # signal, would otherwise let almost any result through.
+    "hai", "hain", "ka", "ki", "ke", "aur", "ko", "se", "mein", "nahi",
+    "hum", "aap", "kya", "kar", "raha", "rahi", "tha", "thi", "the",
+    "batao", "bataye", "bataen", "mujhe", "abhi",
+}
+
+
+def _meaningful_tokens(text: str) -> set[str]:
+    words = re.findall(r"[a-zA-Z]{3,}", (text or "").lower())
+    return {w for w in words if w not in _STOPWORDS}
+
+
+def _is_relevant(query_tokens: set[str], result: dict) -> bool:
+    if not query_tokens:
+        # Nothing meaningful to check against (e.g. a 1-2 word generic
+        # query) - do not filter, to avoid dropping legitimate results.
+        return True
+    haystack = _meaningful_tokens(
+        f"{result.get('title', '')} {result.get('snippet', '')}"
+    )
+    return bool(query_tokens & haystack)
+
+
+def _is_devanagari(text: str) -> bool:
+    return any("\u0900" <= ch <= "\u097F" for ch in (text or ""))
+
+
+def _filter_relevant(query: str, results: list[dict]) -> list[dict]:
+    query_tokens = _meaningful_tokens(query)
+    filtered = []
+    dropped = 0
+    dropped_hindi = 0
+    for r in results:
+        title = r.get("title") or ""
+        # Hard rule regardless of provider: this product only ever
+        # writes in Roman Urdu/English, never Devanagari Hindi script -
+        # a Hindi-script source should never surface as a "Source", even
+        # if hl/gl params fail to keep a provider from returning one.
+        if _is_devanagari(title) or _is_devanagari(r.get("snippet") or ""):
+            dropped_hindi += 1
+            continue
+        # Structured place/business listings (Google Maps or OpenStreetMap)
+        # are tagged with a "[...]" title prefix - these are factual
+        # listings, not free-text web results, so the keyword-overlap
+        # check (built for prose) doesn't apply to them.
+        if title.startswith("["):
+            filtered.append(r)
+            continue
+        if _is_relevant(query_tokens, r):
+            filtered.append(r)
+        else:
+            dropped += 1
+    if dropped_hindi:
+        logger.warning(
+            "web_search: dropped %d Devanagari/Hindi-script result(s) for query=%r",
+            dropped_hindi, query,
+        )
+    if dropped:
+        logger.warning(
+            "web_search: dropped %d irrelevant result(s) for query=%r (no keyword overlap)",
+            dropped, query,
+        )
+    return filtered
+
+
 def _search_tavily(query: str, max_results: int) -> list[dict]:
     if not settings.TAVILY_API_KEY:
         return []
@@ -80,7 +158,12 @@ def _search_tavily(query: str, max_results: int) -> list[dict]:
                 }
             )
         return results
-    except Exception:
+    except Exception as e:
+        status = getattr(getattr(e, "response", None), "status_code", None)
+        logger.warning(
+            "web_search: Tavily provider failed (status=%s): %s - falling back to next provider.",
+            status, str(e)[:200],
+        )
         return []
 
 
@@ -94,7 +177,14 @@ def _search_serper(query: str, max_results: int) -> list[dict]:
                 "X-API-KEY": settings.SERPER_API_KEY,
                 "Content-Type": "application/json",
             },
-            json={"q": query, "num": max_results},
+            # hl/gl pin results to English-language, Pakistan-region
+            # results. Without these, Serper/Google infer language from
+            # the query text alone - a Roman Urdu query with English
+            # topic words (e.g. "AI tools video script") was matching
+            # Hindi-language pages (Devanagari titles/snippets), which
+            # then got shown to the user as "Sources" in a script mixing
+            # three different languages/scripts.
+            json={"q": query, "num": max_results, "hl": "en", "gl": "pk"},
             timeout=_TIMEOUT,
         )
         resp.raise_for_status()
@@ -109,7 +199,12 @@ def _search_serper(query: str, max_results: int) -> list[dict]:
                 }
             )
         return results
-    except Exception:
+    except Exception as e:
+        status = getattr(getattr(e, "response", None), "status_code", None)
+        logger.warning(
+            "web_search: Serper provider failed (status=%s): %s - falling back to next provider.",
+            status, str(e)[:200],
+        )
         return []
 
 
@@ -143,7 +238,12 @@ def _search_exa(query: str, max_results: int) -> list[dict]:
                 }
             )
         return results
-    except Exception:
+    except Exception as e:
+        status = getattr(getattr(e, "response", None), "status_code", None)
+        logger.warning(
+            "web_search: Exa provider failed (status=%s): %s - falling back to next provider.",
+            status, str(e)[:200],
+        )
         return []
 
 
@@ -196,6 +296,26 @@ def _clean_place_query(query: str) -> str:
     return query
 
 
+_NEAR_ME_PATTERN = re.compile(
+    r"\b(near me|nearby|aas\s?pas|aas\s?paas|qareeb|mere\s+(qareeb|nazdeek|paas)|"
+    r"is\s+ilaqe|is\s+area|yahan\s+ke\s+qareeb)\b",
+    re.IGNORECASE,
+)
+
+
+def _wants_current_location_bias(query: str) -> bool:
+    """
+    The user's own GPS-derived location should only be added to the
+    search when they're actually asking about somewhere near them right
+    now (e.g. "pharmacy near me"). If the query already names a specific
+    landmark or city (e.g. "Dubai twin tower"), appending the user's
+    current city text was silently dragging results toward wherever the
+    user happens to be standing, even when they clearly asked about a
+    different city entirely.
+    """
+    return bool(_NEAR_ME_PATTERN.search(query))
+
+
 def _search_places(query: str, max_results: int, lat: float | None = None, lng: float | None = None) -> list[dict]:
     """
     Serper's "ll" coordinate-bias parameter does not reliably work for
@@ -205,6 +325,12 @@ def _search_places(query: str, max_results: int, lat: float | None = None, lng: 
     town/village, falling back to broader region names as needed - this
     works for any country, not just one) and add that name directly to
     the search query text, which Google actually respects.
+
+    That location bias is only applied for genuine "near me" style
+    queries - see _wants_current_location_bias(). A query that already
+    names a specific landmark/city is searched as-is, so asking about a
+    place in Dubai while the user is physically in Lahore does not get
+    silently pulled toward Lahore results.
 
     If Serper is unavailable for any reason (no key, quota exhausted,
     request failure, or a valid-but-empty response), this falls back to
@@ -216,14 +342,17 @@ def _search_places(query: str, max_results: int, lat: float | None = None, lng: 
     query = _clean_place_query(query)
 
     location_name = None
-    if lat is not None and lng is not None:
+    use_current_location = lat is not None and lng is not None and _wants_current_location_bias(query)
+    if use_current_location:
         location_name = _reverse_geocode(lat, lng)
         if location_name is None:
             logger.warning("web_search: reverse geocode returned no place name for lat=%s lng=%s", lat, lng)
+    bias_lat = lat if use_current_location else None
+    bias_lng = lng if use_current_location else None
 
     if not settings.SERPER_API_KEY:
         logger.warning("web_search: places provider skipped - SERPER_API_KEY is not set, using free OpenStreetMap fallback")
-        return _search_nominatim_places(query, max_results, lat, lng, location_name)
+        return _search_nominatim_places(query, max_results, bias_lat, bias_lng, location_name)
 
     search_query = f"{query} in {location_name}" if location_name else query
 
@@ -252,14 +381,14 @@ def _search_places(query: str, max_results: int, lat: float | None = None, lng: 
             results.append({"title": "[Verified Google Maps listing] " + p.get("title", ""), "url": maps_url, "snippet": snippet})
         if not results:
             logger.warning("web_search: places API returned zero results for query=%r, using free OpenStreetMap fallback", search_query)
-            return _search_nominatim_places(query, max_results, lat, lng, location_name)
+            return _search_nominatim_places(query, max_results, bias_lat, bias_lng, location_name)
         return results
     except Exception as exc:
         # Covers quota/credit exhaustion (Serper returns a non-2xx status,
         # which raise_for_status() turns into an exception here) as well
         # as any other network/API failure.
         logger.warning("web_search: places provider request failed: %s - using free OpenStreetMap fallback", exc)
-        return _search_nominatim_places(query, max_results, lat, lng, location_name)
+        return _search_nominatim_places(query, max_results, bias_lat, bias_lng, location_name)
 
 
 def _search_nominatim_places(
@@ -497,6 +626,8 @@ def _web_search_impl(query: str, max_results: int = 5, deep: bool = False, lat: 
             else:
                 results = fn(query, max_results)
             if results:
+                results = _filter_relevant(query, results)
+            if results:
                 if _name != "places" and _looks_like_place_query(query) and lat is not None:
                     logger.warning(
                         "web_search: location-aware 'places' provider returned nothing, "
@@ -546,6 +677,7 @@ def _web_search_impl(query: str, max_results: int = 5, deep: bool = False, lat: 
                         combined.append(r)
 
     combined = combined[: max_results * 2]
+    combined = _filter_relevant(query, combined)
 
     # Web Scraper: enrich top 3 sources with full page text (parallel,
     # tight timeout) - only in deep mode, to keep fast mode fast.
