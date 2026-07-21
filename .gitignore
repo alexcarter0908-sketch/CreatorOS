@@ -98,3 +98,15 @@ CommandInput.txt
 /logo-128.png
 /chat_agent (1).py
 /search_gate (1).py
+
+# ----------------------------
+# Dead/unused code identified during frontend audit (July 2026).
+# Not deleted per product decision - kept on disk for reference,
+# just no longer tracked/committed going forward.
+# ----------------------------
+/frontend/features/command-center/components/CommandInput (2).tsx
+/frontend/features/workflows/store/workflow.store.ts
+/frontend/features/workflows/services/workflow.service.ts
+/frontend/features/workflows/types/workflow.ts
+/frontend/features/workflows/index.ts
+/frontend/styles/console-theme.css
