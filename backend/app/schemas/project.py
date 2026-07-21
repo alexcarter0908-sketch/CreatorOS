@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from datetime import datetime
 
@@ -34,6 +34,7 @@ class UpdateProjectRequest(BaseModel):
     )
 
     status: str | None = None
+    status_auto: bool | None = None
     brand_voice: str | None = Field(
         default=None,
         max_length=3000,
@@ -50,6 +51,7 @@ class ProjectResponse(BaseModel):
     name: str
     description: str | None
     status: str
+    status_auto: bool
     brand_voice: str | None
     created_at: datetime
     updated_at: datetime

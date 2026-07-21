@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from app.database.models import Project
 from app.repositories.project_repository import (
@@ -70,6 +70,14 @@ class ProjectService:
 
         if request.status is not None:
             project.status = request.status
+            # A deliberate manual status change pins it - the system will
+            # not auto-promote this project anymore until the user
+            # re-enables auto mode explicitly.
+            project.status_auto = False
+
+        if request.status_auto is not None:
+            project.status_auto = request.status_auto
+
         if request.brand_voice is not None:
             project.brand_voice = request.brand_voice
         return self.projects.update(project)

@@ -48,6 +48,7 @@ export default function ProjectDetail({ id }: ProjectDetailProps) {
     description: "",
     brand_voice: "",
     status: "draft" as ProjectStatus,
+    status_auto: true,
   });
 
   useEffect(() => {
@@ -62,6 +63,7 @@ export default function ProjectDetail({ id }: ProjectDetailProps) {
       description: project.description ?? "",
       brand_voice: project.brand_voice ?? "",
       status: project.status,
+      status_auto: project.status_auto,
     });
     setIsEditing(true);
   }
@@ -71,7 +73,7 @@ export default function ProjectDetail({ id }: ProjectDetailProps) {
       name: form.name,
       description: form.description || null,
       brand_voice: form.brand_voice || null,
-      status: form.status,
+      ...(form.status_auto ? { status_auto: true } : { status: form.status, status_auto: false }),
     });
     if (ok) setIsEditing(false);
   }
@@ -115,8 +117,9 @@ export default function ProjectDetail({ id }: ProjectDetailProps) {
             <div className="flex shrink-0 items-center gap-2">
               {!isEditing ? (
                 <>
-                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${STATUS_STYLES[project.status]}`}>
+                  <span className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${STATUS_STYLES[project.status]}`}>
                     {STATUS_LABELS[project.status]}
+                    {project.status_auto && <span className="opacity-70">· Auto</span>}
                   </span>
                   <button
                     onClick={startEditing}
@@ -172,13 +175,25 @@ export default function ProjectDetail({ id }: ProjectDetailProps) {
           ) : (
             <div className="mt-4 space-y-4">
               <div>
-                <label className="text-sm font-semibold text-foreground">Status</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-semibold text-foreground">Status</label>
+                  <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={form.status_auto}
+                      onChange={(e) => setForm({ ...form, status_auto: e.target.checked })}
+                      className="h-3.5 w-3.5"
+                    />
+                    Auto (recommended)
+                  </label>
+                </div>
                 <div className="mt-1 flex gap-2">
                   {STATUS_OPTIONS.map((s) => (
                     <button
                       key={s}
+                      disabled={form.status_auto}
                       onClick={() => setForm({ ...form, status: s })}
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                      className={`rounded-full px-3 py-1 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${
                         form.status === s ? STATUS_STYLES[s] : "bg-muted text-muted-foreground"
                       }`}
                     >
@@ -186,6 +201,11 @@ export default function ProjectDetail({ id }: ProjectDetailProps) {
                     </button>
                   ))}
                 </div>
+                {form.status_auto && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    System will move this from Draft to Active once you generate content in it.
+                  </p>
+                )}
               </div>
 
               <div>

@@ -57,6 +57,7 @@ function EditProjectForm({
   const [description, setDescription] = useState(project.description ?? "");
   const [brandVoice, setBrandVoice] = useState(project.brand_voice ?? "");
   const [status, setStatus] = useState<ProjectStatus>(project.status);
+  const [statusAuto, setStatusAuto] = useState(project.status_auto);
 
   async function handleSave() {
     if (!name.trim()) {
@@ -69,7 +70,9 @@ function EditProjectForm({
         name: name.trim(),
         description: description.trim(),
         brand_voice: brandVoice.trim(),
-        status,
+        // If auto mode is on, don't force a status - let the system keep
+        // deciding. If the user turned auto off, their picked status wins.
+        ...(statusAuto ? { status_auto: true } : { status, status_auto: false }),
       });
 
       toast.success("Project updated.");
@@ -112,12 +115,25 @@ function EditProjectForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="edit-project-status">Status</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="edit-project-status">Status</Label>
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <input
+              id="edit-project-status-auto"
+              type="checkbox"
+              checked={statusAuto}
+              onChange={(e) => setStatusAuto(e.target.checked)}
+              className="h-3.5 w-3.5"
+            />
+            Auto (recommended)
+          </label>
+        </div>
         <select
           id="edit-project-status"
           value={status}
+          disabled={statusAuto}
           onChange={(e) => setStatus(e.target.value as ProjectStatus)}
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
         >
           {STATUS_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -125,6 +141,12 @@ function EditProjectForm({
             </option>
           ))}
         </select>
+        {statusAuto && (
+          <p className="text-xs text-muted-foreground">
+            System will move this from Draft to Active once you generate content in it.
+            Uncheck to set the status yourself.
+          </p>
+        )}
       </div>
 
       <Button className="w-full" onClick={handleSave} disabled={isUpdating}>

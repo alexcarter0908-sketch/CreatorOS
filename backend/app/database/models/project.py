@@ -1,6 +1,6 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import Boolean, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
@@ -32,6 +32,16 @@ class Project(
     status: Mapped[str] = mapped_column(
         String(50),
         default="draft",
+        nullable=False,
+    )
+
+    # When True, the system is free to move `status` forward automatically
+    # based on project activity (e.g. draft -> active once content exists).
+    # Set to False as soon as a user manually picks a status, so the system
+    # never fights a deliberate choice.
+    status_auto: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
         nullable=False,
     )
 

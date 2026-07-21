@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
@@ -58,6 +58,23 @@ class ProjectRepository:
         self.db.add(project)
         self.db.commit()
         self.db.refresh(project)
+
+        return project
+
+    def promote_to_active_if_auto(
+        self,
+        project_id: str,
+    ) -> Project | None:
+        """Move a project from draft -> active once it has real content,
+        but only if the user hasn't manually pinned its status."""
+        project = self.get_by_id(project_id)
+
+        if project is None:
+            return None
+
+        if project.status_auto and project.status == "draft":
+            project.status = "active"
+            return self.update(project)
 
         return project
 

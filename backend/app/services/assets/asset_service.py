@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import base64
 import mimetypes
@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.database.models import Asset
 from app.repositories.asset_repository import AssetRepository
+from app.repositories.project_repository import ProjectRepository
 from app.services.storage import get_storage
 
 # Office Open XML types aren't always known to Python's mimetypes
@@ -36,7 +37,6 @@ class AssetService:
         model_id: str,
         prompt: str | None = None,
         project_id: str | None = None,
-        source_asset_id: str | None = None,
     ) -> Asset:
         return self.repo.create(
             owner_id=owner_id,
@@ -46,8 +46,17 @@ class AssetService:
             prompt=prompt,
             project_id=project_id,
             status="pending",
-            source_asset_id=source_asset_id,
         )
+
+    def _mark_completed(self, asset: Asset, **kwargs) -> Asset:
+        """Wraps repo.mark_completed so every completion path also gives
+        the parent project a chance to auto-promote draft -> active."""
+        result = self.repo.mark_completed(asset, **kwargs)
+
+        if result.project_id:
+            ProjectRepository(self.db).promote_to_active_if_auto(result.project_id)
+
+        return result
 
     def complete(
         self,
@@ -67,7 +76,7 @@ class AssetService:
             subfolder=asset.asset_type,
         )
 
-        return self.repo.mark_completed(
+        return self._mark_completed(
             asset,
             file_url=public_url,
             storage_path=storage_path,
@@ -148,7 +157,7 @@ class AssetService:
 
         if asset.asset_type == "text":
             text_value = payload if isinstance(payload, str) else str(payload)
-            return self.repo.mark_completed(
+            return self._mark_completed(
                 asset,
                 file_url="",
                 storage_path="",
@@ -181,7 +190,7 @@ class AssetService:
 
         if not remote_url:
             extra["raw_result"] = payload if not isinstance(payload, (dict, list)) else None
-            return self.repo.mark_completed(
+            return self._mark_completed(
                 asset,
                 file_url="",
                 storage_path="",
@@ -198,7 +207,7 @@ class AssetService:
             extra["download_error"] = str(e)
             if not remote_url.startswith("data:"):
                 extra["source_url"] = remote_url
-            return self.repo.mark_completed(
+            return self._mark_completed(
                 asset,
                 file_url=remote_url if not remote_url.startswith("data:") else "",
                 storage_path="",
@@ -210,7 +219,7 @@ class AssetService:
         if not remote_url.startswith("data:"):
             extra["source_url"] = remote_url
 
-        return self.repo.mark_completed(
+        return self._mark_completed(
             asset,
             file_url=public_url,
             storage_path=storage_path,
