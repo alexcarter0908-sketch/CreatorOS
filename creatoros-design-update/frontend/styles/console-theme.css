@@ -1,0 +1,96 @@
+/*
+ * CreatorOS "Console" theme
+ * -------------------------------------------------------------
+ * Scoped visual re-skin for the Dashboard (Overview) and Command
+ * Center pages only. It works by overriding the SAME CSS custom
+ * properties the app's existing shadcn/Tailwind theme already
+ * reads (--background, --card, --border, --primary, etc.) inside
+ * a `.console-theme` wrapper.
+ *
+ * IMPORTANT: this file changes colors/typography tokens ONLY.
+ * It intentionally does not add any layout rules that would need
+ * to reach into component internals - every component under this
+ * wrapper keeps its existing className-driven layout and all of
+ * its logic/behavior untouched. Because components use theme
+ * tokens (bg-card, border-border, text-foreground, bg-muted,
+ * bg-chat-user, text-primary, ...) rather than hardcoded colors,
+ * overriding the tokens here re-skins them with zero edits to
+ * their source files.
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+.console-theme {
+  --background: #0b0d10;
+  --foreground: #f2f3f5;
+
+  --card: #14171c;
+  --card-foreground: #f2f3f5;
+
+  --popover: #14171c;
+  --popover-foreground: #f2f3f5;
+
+  --primary: #f5a623;
+  --primary-foreground: #0b0d10;
+
+  --secondary: #1b1f26;
+  --secondary-foreground: #f2f3f5;
+
+  --muted: #1b1f26;
+  --muted-foreground: #878d98;
+
+  --accent: #1b1f26;
+  --accent-foreground: #f5a623;
+
+  --destructive: #e5484d;
+
+  --border: #262b33;
+  --input: #262b33;
+  --ring: #f5a623;
+
+  --chart-1: #f5a623;
+  --chart-2: #3ddbd9;
+  --chart-3: #3dd68c;
+  --chart-4: #878d98;
+  --chart-5: #565c66;
+
+  --chat-user-bg: #3a2a12;
+  --chat-user-foreground: #f5d9a8;
+
+  --code-bg: #0f1216;
+  --code-foreground: #e6e7ea;
+  --code-border: #262b33;
+
+  --radius: 0.85rem;
+
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* Utility classes for the new headline / data typography used only
+   on the redesigned dashboard + command center chrome (page-level
+   headers, stat numbers, timecodes) - never applied inside shared
+   or unmodified components. */
+.console-theme .font-console-display {
+  font-family: "Space Grotesk", var(--font-sans, sans-serif);
+  letter-spacing: -0.01em;
+}
+.console-theme .font-console-mono {
+  font-family: "JetBrains Mono", var(--font-geist-mono, monospace);
+}
+
+/* Signature accent used sparingly for the console's AI/live surfaces */
+.console-theme .console-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #3dd68c;
+  box-shadow: 0 0 0 3px rgba(61, 214, 140, 0.15);
+  display: inline-block;
+}
+
+.console-theme .console-glow {
+  background:
+    radial-gradient(120% 140% at 15% 0%, rgba(245, 166, 35, 0.10), transparent 55%),
+    radial-gradient(120% 140% at 85% 100%, rgba(61, 219, 217, 0.08), transparent 55%);
+}
