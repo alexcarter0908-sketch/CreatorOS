@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import time
 
 import requests
@@ -10,9 +9,6 @@ from app.core.config.settings import settings
 
 class TranscriptionError(RuntimeError):
     pass
-
-
-logger = logging.getLogger("transcription")
 
 
 # Intermittent SSL/connection glitches talking to Groq (observed: SSL
@@ -79,7 +75,6 @@ def transcribe_audio_bytes(audio_bytes: bytes, filename: str = "audio.webm") -> 
         ) from exc
 
     if response.status_code != 200:
-        logger.error("Groq Whisper STT failed (%s): %s", response.status_code, response.text[:1000])
         raise TranscriptionError(
             f"Groq Whisper STT failed ({response.status_code}): {response.text[:500]}"
         )
@@ -88,7 +83,6 @@ def transcribe_audio_bytes(audio_bytes: bytes, filename: str = "audio.webm") -> 
     text = payload.get("text", "")
 
     if not text:
-        logger.error("Groq Whisper STT returned empty text. Raw response: %s", response.text[:1000])
         raise TranscriptionError("Groq Whisper STT returned empty text.")
 
     return text.strip()
