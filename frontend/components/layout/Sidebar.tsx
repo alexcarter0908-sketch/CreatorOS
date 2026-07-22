@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
@@ -31,14 +31,14 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
       <div className="flex items-center justify-between px-4 py-5">
         {expanded ? (
           <div className="flex min-w-0 items-center gap-2">
-            <img src="/logo.png" alt="Synapse-X-CreatorOS" className="h-8 w-8 shrink-0 rounded-lg object-cover" />
+            <img src="/logo-icon.png" alt="Synapse-X-CreatorOS" className="h-8 w-8 shrink-0 rounded-lg object-cover" />
             <div className="min-w-0 leading-tight">
               <h1 className="truncate text-xs font-semibold text-sidebar-foreground">Synapse-X-CreatorOS</h1>
               <span className="text-[10px] text-muted-foreground">{APP_VERSION}</span>
             </div>
           </div>
         ) : (
-          <img src="/logo.png" alt="Synapse-X-CreatorOS" className="mx-auto h-8 w-8 rounded-lg object-cover" />
+          <img src="/logo-icon.png" alt="Synapse-X-CreatorOS" className="mx-auto h-8 w-8 rounded-lg object-cover" />
         )}
         <button
           onClick={onClose}

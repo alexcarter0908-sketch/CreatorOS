@@ -78,7 +78,7 @@ export default function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-5">
       <div className="mb-2 flex items-center gap-2 lg:hidden">
-        <img src="/logo.png" alt="Synapse-X-CreatorOS" className="h-8 w-8 rounded-lg object-cover" />
+        <img src="/logo-icon.png" alt="Synapse-X-CreatorOS" className="h-8 w-8 rounded-lg object-cover" />
         <span className="text-sm font-semibold text-foreground">Synapse-X-CreatorOS</span>
       </div>
 

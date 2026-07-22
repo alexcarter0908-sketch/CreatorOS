@@ -148,7 +148,7 @@ export default function AuthShowcasePanel({ variant }: { variant: Variant }) {
 
       <div className="relative z-10 flex h-full flex-col justify-center gap-7">
         <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="Synapse-X-CreatorOS" className="h-14 w-14 rounded-xl object-cover" />
+          <img src="/logo-icon.png" alt="Synapse-X-CreatorOS" className="h-14 w-14 rounded-xl object-cover" />
           <span className="text-xl font-semibold tracking-wide text-white">Synapse-X-CreatorOS</span>
         </div>
 
@@ -213,7 +213,7 @@ export default function AuthShowcasePanel({ variant }: { variant: Variant }) {
               >
                 {scene === "logo" && (
                   <>
-                    <img src="/logo.png" alt="" className="h-11 w-11 rounded-xl object-cover" />
+                    <img src="/logo-icon.png" alt="" className="h-11 w-11 rounded-xl object-cover" />
                     <span className="text-center text-[11px] font-semibold tracking-[0.12em] text-white/90">
                       SYNAPSE-X-CREATOROS
                     </span>
