@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import asyncio
 import time
@@ -9,6 +9,7 @@ import jwt  # pip install pyjwt --break-system-packages
 
 from app.core.config import settings
 from app.services.providers.base_provider import BaseProvider
+from app.services.providers.media_specs import resolve_video_aspect_ratio
 
 
 class KlingProvider(BaseProvider):
@@ -151,12 +152,21 @@ class KlingProvider(BaseProvider):
         **kwargs: Any,
     ) -> dict[str, Any]:
 
+        # AIRequest.quality defaults to "ultra" - treat anything other
+        # than an explicit "draft"/"fast"/"standard" request as wanting
+        # Kling's higher-quality "pro" (1080p) mode instead of silently
+        # falling back to "std" (720p) like before.
+        quality = str(kwargs.get("quality", "ultra")).lower()
+        default_mode = "std" if quality in ("draft", "fast", "low", "standard", "std") else "pro"
+
+        platform = kwargs.get("platform", "generic")
+
         payload: dict[str, Any] = {
             "model_name": model,
             "prompt": prompt,
             "duration": str(kwargs.get("duration", 5)),
-            "mode": kwargs.get("mode", "std"),
-            "aspect_ratio": kwargs.get("ratio", "16:9"),
+            "mode": kwargs.get("mode", default_mode),
+            "aspect_ratio": kwargs.get("ratio") or resolve_video_aspect_ratio(platform),
         }
 
         if kwargs.get("negative_prompt"):

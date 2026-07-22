@@ -1,9 +1,10 @@
-﻿from typing import Any
+from typing import Any
 from pydantic import BaseModel, Field
 class AIRequest(BaseModel):
     prompt: str
     language: str = "auto"
     asset_type: str = "text"
+    purpose: str | None = None
     project_id: str | None = None
     platform: str = "generic"
     provider: str | None = None

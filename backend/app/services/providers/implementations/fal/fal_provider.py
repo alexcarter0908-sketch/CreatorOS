@@ -7,6 +7,7 @@ import fal_client
 
 from app.core.config import settings
 from app.services.providers.base_provider import BaseProvider
+from app.services.providers.media_specs import fit_within, resolve_image_dimensions
 
 
 class FalProvider(BaseProvider):
@@ -37,17 +38,23 @@ class FalProvider(BaseProvider):
         *,
         model: str,
         prompt: str,
+        purpose: str = "image",
+        platform: str = "generic",
         **kwargs,
     ):
 
         # Make FAL SDK see the API key
         os.environ["FAL_KEY"] = settings.FAL_API_KEY
 
+        width, height = resolve_image_dimensions(purpose, platform)
+        width, height = fit_within(width, height)
+
         def run():
             return fal_client.subscribe(
                 application=model,
                 arguments={
                     "prompt": prompt,
+                    "image_size": {"width": width, "height": height},
                 },
             )
 
@@ -73,6 +80,9 @@ class FalProvider(BaseProvider):
     },
     metadata={
         "provider": self.name,
+        "purpose": purpose,
+        "platform": platform,
+        "requested_size": f"{width}x{height}",
         "raw": str(result),   # ya repr(result)
     },
 )

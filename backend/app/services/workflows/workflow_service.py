@@ -1,10 +1,9 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
 from app.database.models.workflow import Workflow
 from app.repositories.workflow_repository import WorkflowRepository
-from app.repositories.notification_repository import NotificationRepository
 from app.schemas.ai_request import AIRequest
 from app.services.assets.asset_service import AssetService
 from app.services.orchestrator.ai_orchestrator import AIOrchestrator
@@ -36,8 +35,8 @@ class WorkflowService:
         self,
         workflow_id: str,
         owner_id: str,
-        seed_text: str | None = None,
-        source_asset_id: str | None = None,
+        platform: str = "generic",
+        step_purposes: dict[int, str] | None = None,
     ) -> Workflow:
         """
         Runs every step in order. A failed step is recorded with its
@@ -45,21 +44,11 @@ class WorkflowService:
         (e.g. a provider missing a permission) does not block the rest
         of the pipeline from being attempted.
 
-        seed_text / source_asset_id are optional: when provided, the
-        workflow's first {previous_output} substitution uses this text
-        instead of generating it from scratch, and any created assets
-        are linked back to that source asset. Both default to None, so
-        existing callers are unaffected.
-
         Final workflow.status is:
           - "completed"             if every step succeeded
           - "completed_with_errors" if at least one step succeeded and
                                      at least one failed
           - "failed"                if every step failed
-
-        A notification is created for the owner once the workflow
-        reaches a terminal state, so they know their project finished
-        without watching the screen for it.
         """
         workflow = self.repo.get_by_id(workflow_id)
 
@@ -68,11 +57,11 @@ class WorkflowService:
 
         self.repo.update_workflow_status(workflow, "running")
 
-        previous_output: str | None = seed_text
+        previous_output: str | None = None
         any_success = False
         any_failure = False
 
-        for step in workflow.steps:
+        for step_index, step in enumerate(workflow.steps):
             if step.status == "completed":
                 previous_output = self._extract_text(step) or previous_output
                 any_success = True
@@ -91,7 +80,6 @@ class WorkflowService:
                 model_id="auto",
                 prompt=prompt,
                 project_id=workflow.project_id,
-                source_asset_id=source_asset_id,
             )
 
             try:
@@ -99,6 +87,8 @@ class WorkflowService:
                     prompt=prompt,
                     asset_type=step.asset_type,
                     project_id=workflow.project_id,
+                    platform=platform,
+                    purpose=(step_purposes or {}).get(step_index),
                 )
 
                 result = await self.orchestrator.execute(ai_request)
@@ -126,16 +116,6 @@ class WorkflowService:
             final_status = "completed"
 
         self.repo.update_workflow_status(workflow, final_status)
-
-        notif_type, title, message = self._notification_copy(workflow.name, final_status)
-        NotificationRepository(self.db).create(
-            owner_id=owner_id,
-            type=notif_type,
-            title=title,
-            message=message,
-            workflow_id=workflow.id,
-        )
-
         return self.repo.get_by_id(workflow_id)
 
     def _extract_text(self, step) -> str | None:
@@ -147,23 +127,3 @@ class WorkflowService:
         if asset and asset.extra_metadata:
             return asset.extra_metadata.get("text")
         return None
-
-    @staticmethod
-    def _notification_copy(name: str, status: str) -> tuple[str, str, str]:
-        if status == "completed":
-            return (
-                "project_completed",
-                f'"{name}" is ready',
-                "Every step finished successfully.",
-            )
-        if status == "completed_with_errors":
-            return (
-                "project_completed_with_errors",
-                f'"{name}" finished with some errors',
-                "Some steps failed - check the workflow for details.",
-            )
-        return (
-            "project_failed",
-            f'"{name}" failed',
-            "None of the steps completed. Check the workflow for details.",
-        )

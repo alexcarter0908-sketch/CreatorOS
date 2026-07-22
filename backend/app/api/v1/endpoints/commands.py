@@ -133,6 +133,32 @@ def detect_asset_type(command: str) -> str:
     return "text"
 
 
+def detect_image_purpose(command: str) -> str:
+    """
+    Separate from detect_asset_type() on purpose: the asset's stored
+    asset_type stays "image" either way (so it keeps showing up under
+    /thumbnails, filters, etc. exactly as before) - this only decides
+    what *shape* to generate it at (see media_specs.py).
+    """
+    command = command.lower()
+
+    purpose_words = [
+        ("thumbnail", "thumbnail"),
+        ("banner", "banner"),
+        ("cover", "cover"),
+        ("logo", "logo"),
+        ("poster", "poster"),
+        ("profile picture", "profile_photo"),
+        ("profile photo", "profile_photo"),
+        ("avatar", "profile_photo"),
+    ]
+    for word, purpose in purpose_words:
+        if word in command:
+            return purpose
+
+    return "image"
+
+
 def _wants_full_pipeline(command: str) -> bool:
     """
     A "video ... for my YouTube channel" style command should trigger
@@ -320,6 +346,7 @@ async def run_command(
     ai_request = AIRequest(
         prompt=request.command,
         asset_type=asset_type,
+        purpose=detect_image_purpose(request.command) if asset_type == "image" else None,
         project_id=request.project_id,
         owner_id=current_user.id,
         history=history,
@@ -484,6 +511,7 @@ async def run_command_stream(
                 ai_request = AIRequest(
                     prompt=request.command,
                     asset_type=asset_type,
+                    purpose=detect_image_purpose(request.command) if asset_type == "image" else None,
                     project_id=request.project_id,
                     owner_id=owner_id,
                     history=history,

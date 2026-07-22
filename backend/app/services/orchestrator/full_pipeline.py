@@ -5,10 +5,15 @@ from __future__ import annotations
 # step's text output (chained automatically by WorkflowService).
 PIPELINE_STEPS: list[tuple[str, str]] = [
     ("text", "Write a short, engaging video script for: {prompt}"),
-    ("image", "Create a YouTube thumbnail for a video about: {prompt}. Script context: {previous_output}"),
+    ("image", "Create a scroll-stopping cover image for a video about: {prompt}. Script context: {previous_output}"),
     ("video", "Generate a video based on this script: {previous_output}. Original request: {prompt}"),
-    ("text", "Write an SEO-optimized YouTube title, description and tags for: {prompt}. Script: {previous_output}"),
+    ("text", "Write an SEO-optimized title, description and tags for: {prompt}. Script: {previous_output}"),
 ]
+
+# Step 1 (0-indexed) is the thumbnail/cover image - tag it with a
+# purpose so the image provider sizes it correctly for the target
+# platform, without changing its stored asset_type ("image").
+PIPELINE_STEP_PURPOSES: dict[int, str] = {1: "thumbnail"}
 
 
 async def run_full_pipeline(
@@ -30,6 +35,11 @@ async def run_full_pipeline(
     from app.services.publishing.publish_manager import publish_to_connected_platforms
     from app.services.workflows.workflow_service import WorkflowService
 
+    # The thumbnail/video shape depends on where this is headed - use
+    # the first requested platform as the "primary" target to size for.
+    # (generic/16:9 if nothing was specified.)
+    primary_platform = platforms[0] if platforms else "generic"
+
     service = WorkflowService(db)
     steps = [
         {"asset_type": at, "prompt": tpl.replace("{prompt}", prompt)}
@@ -41,7 +51,12 @@ async def run_full_pipeline(
         steps=steps,
         project_id=project_id,
     )
-    workflow = await service.run(workflow.id, owner_id=owner_id)
+    workflow = await service.run(
+        workflow.id,
+        owner_id=owner_id,
+        platform=primary_platform,
+        step_purposes=PIPELINE_STEP_PURPOSES,
+    )
 
     result: dict = {"status": workflow.status, "workflow_id": workflow.id}
 
