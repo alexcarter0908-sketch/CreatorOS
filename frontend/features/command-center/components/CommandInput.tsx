@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import PublishToYouTubeButton from "@/components/publishing/PublishToYouTubeButton";
@@ -48,8 +48,8 @@ import { clearStoredConversationId } from "../services/command.service";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-const MIN_TEXTAREA_HEIGHT = 44;
-const MAX_TEXTAREA_HEIGHT = 200;
+const MIN_TEXTAREA_HEIGHT = 52;
+const MAX_TEXTAREA_HEIGHT = 320;
 const PASTE_LINE_THRESHOLD = 500;
 const COLLAPSE_LENGTH = 500;
 const COLLAPSE_LINES = 500;
@@ -340,7 +340,7 @@ function GeneratedContentCard({
           ) : null}
         </div>
       </div>
-      <div className="max-h-[420px] overflow-y-auto p-4 text-[15px] leading-relaxed">
+      <div className="max-h-[560px] overflow-y-auto p-4 text-[15px] leading-relaxed">
         {renderContent(content, onCopy, false)}
       </div>
       {assetType === "video" && assetId ? (
@@ -1005,10 +1005,10 @@ export default function CommandInput() {
             </p>
             <div className="mt-6 flex max-w-2xl flex-wrap items-center justify-center gap-2.5">
               {[
-                { label: "🎬 Write a video script", text: "Write a 60-second YouTube script about " },
-                { label: "🖼️ Design a thumbnail", text: "Generate a thumbnail idea for a video about " },
-                { label: "🎙️ Narrate a voiceover", text: "Write and narrate a short voiceover about " },
-                { label: "🔍 Optimize for SEO", text: "Write SEO title, description, and tags for a video about " },
+                { label: "ðŸŽ¬ Write a video script", text: "Write a 60-second YouTube script about " },
+                { label: "ðŸ–¼ï¸ Design a thumbnail", text: "Generate a thumbnail idea for a video about " },
+                { label: "ðŸŽ™ï¸ Narrate a voiceover", text: "Write and narrate a short voiceover about " },
+                { label: "ðŸ” Optimize for SEO", text: "Write SEO title, description, and tags for a video about " },
               ].map((chip) => (
                 <button
                   key={chip.label}
@@ -1029,8 +1029,8 @@ export default function CommandInput() {
           const bubbleClass = isUser
             ? "max-w-[75%] space-y-2 rounded-2xl bg-chat-user px-4 py-3 text-[15px] leading-relaxed text-chat-user-foreground"
             : isCardType
-            ? "max-w-[85%] w-full space-y-2"
-            : "max-w-[75%] space-y-2 rounded-2xl bg-muted px-4 py-3 text-[15px] leading-relaxed text-foreground";
+            ? "w-full space-y-2"
+            : "max-w-[88%] space-y-2 rounded-2xl bg-muted px-4 py-3 text-[15px] leading-relaxed text-foreground";
           const rowClass = isUser ? "flex flex-col items-end" : "flex flex-col items-start";
 
           return (
@@ -1299,7 +1299,7 @@ export default function CommandInput() {
                 onKeyDown={handleKeyDown}
                 onPaste={handlePaste}
                 placeholder="Chat with CreatorOS. Ask for scripts, images, videos, or SEO content"
-                className="w-full resize-none border-0 bg-transparent px-1 py-2.5 focus-visible:ring-0 min-h-[44px] max-h-[200px]"
+                className="w-full resize-none border-0 bg-transparent px-1 py-2.5 focus-visible:ring-0 min-h-[52px] max-h-[320px]"
               />
             </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, FileText, Image as ImageIcon, Loader2, Search, Tag, Video } from "lucide-react";
+import { Check, FileText, Image as ImageIcon, Loader2, Mic, Palette, Scissors, Search, Sparkles, Tag, Video, Wand2 } from "lucide-react";
 
 type Variant = "login" | "register";
 
@@ -30,6 +30,14 @@ const PIPELINE_STEPS = [
   { label: "Generating video", icon: Video },
 ];
 
+const CLIP_HIGHLIGHTS = [
+  { label: "Auto captions", icon: FileText },
+  { label: "Voice cloning", icon: Mic },
+  { label: "Smart cut", icon: Scissors },
+  { label: "Color grade", icon: Palette },
+  { label: "AI enhance", icon: Wand2 },
+];
+
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -42,6 +50,8 @@ export default function AuthShowcasePanel({ variant }: { variant: Variant }) {
   const [completedSteps, setCompletedSteps] = useState<boolean[]>(() => PIPELINE_STEPS.map(() => false));
   const [videoReady, setVideoReady] = useState(false);
   const [videoProgress, setVideoProgress] = useState(0);
+  const [scene, setScene] = useState<"logo" | "title" | "highlights">("logo");
+  const [highlightIndex, setHighlightIndex] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,6 +62,8 @@ export default function AuthShowcasePanel({ variant }: { variant: Variant }) {
       setCompletedSteps(PIPELINE_STEPS.map(() => false));
       setVideoReady(false);
       setVideoProgress(0);
+      setScene("logo");
+      setHighlightIndex(0);
 
       await sleep(400);
 
@@ -88,6 +100,35 @@ export default function AuthShowcasePanel({ variant }: { variant: Variant }) {
       setVideoProgress((p) => (p >= 100 ? 0 : p + 2));
     }, 120);
     return () => clearInterval(id);
+  }, [videoReady]);
+
+  useEffect(() => {
+    if (!videoReady) return;
+    let cancelled = false;
+
+    async function loop() {
+      while (!cancelled) {
+        setScene("logo");
+        await sleep(1400);
+        if (cancelled) return;
+
+        setScene("title");
+        await sleep(1400);
+        if (cancelled) return;
+
+        setScene("highlights");
+        for (let i = 0; i < CLIP_HIGHLIGHTS.length; i++) {
+          if (cancelled) return;
+          setHighlightIndex(i);
+          await sleep(1500);
+        }
+      }
+    }
+
+    loop();
+    return () => {
+      cancelled = true;
+    };
   }, [videoReady]);
 
   return (
@@ -153,17 +194,79 @@ export default function AuthShowcasePanel({ variant }: { variant: Variant }) {
               marginTop: videoReady ? "14px" : "0px",
             }}
           >
-            <div className="relative h-[120px] w-full overflow-hidden rounded-lg border border-white/10 bg-gradient-to-br from-[#241d3a] via-[#2c1f45] to-[#151225]">
-              <div className="absolute left-2.5 top-2.5 flex items-center gap-1.5">
+            <div className="relative h-[128px] w-full overflow-hidden rounded-lg border border-white/10 bg-gradient-to-br from-[#241d3a] via-[#2c1f45] to-[#151225]">
+              <div
+                className="absolute -inset-y-10 -left-1/3 w-2/3 rotate-12 bg-white/[0.05] blur-2xl"
+                style={{ animation: "cosSweep 5s ease-in-out infinite" }}
+              />
+
+              <div className="absolute left-2.5 top-2.5 z-10 flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" />
                 <span className="text-[9px] font-medium uppercase tracking-widest text-white/60">Playing</span>
               </div>
-              <div className="flex h-full w-full items-center justify-center">
-                <p className="px-4 text-center text-[12px] font-medium text-white/85">{copy.clip}</p>
+              <span className="absolute right-2.5 top-2.5 z-10 text-[9px] font-medium text-white/40">{copy.clip}</span>
+
+              <div
+                key={scene === "highlights" ? `highlights-${highlightIndex}` : scene}
+                className="relative z-10 flex h-full w-full flex-col items-center justify-center gap-2 px-4"
+                style={{ animation: "cosFade 0.5s ease-out" }}
+              >
+                {scene === "logo" && (
+                  <>
+                    <img src="/logo.png" alt="" className="h-11 w-11 rounded-xl object-cover" />
+                    <span className="text-[12px] font-semibold tracking-[0.2em] text-white/90">CREATOROS</span>
+                  </>
+                )}
+
+                {scene === "title" && (
+                  <>
+                    <p className="text-center text-[16px] font-semibold leading-snug text-white">{copy.clip}</p>
+                    <span className="text-[9px] font-medium uppercase tracking-widest text-white/40">
+                      An AI-generated video
+                    </span>
+                  </>
+                )}
+
+                {scene === "highlights" &&
+                  (() => {
+                    const item = CLIP_HIGHLIGHTS[highlightIndex];
+                    const Icon = item.icon;
+                    return (
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-400/15">
+                          <Icon className="h-3.5 w-3.5 text-violet-300" />
+                        </div>
+                        <span className="text-[13px] font-medium text-white/90">{item.label}</span>
+                        <Sparkles className="h-3 w-3 text-violet-300/70" />
+                      </div>
+                    );
+                  })()}
               </div>
-              <div className="absolute bottom-0 left-0 h-1 w-full bg-white/10">
+
+              <div className="absolute bottom-4 left-0 z-10 flex h-4 w-full items-end justify-center gap-[3px] px-6">
+                {Array.from({ length: 28 }).map((_, i) => (
+                  <span
+                    key={i}
+                    className="w-[2px] rounded-full bg-violet-300/70"
+                    style={{
+                      height: "100%",
+                      transformOrigin: "bottom",
+                      animation: "cosWave 1.1s ease-in-out infinite",
+                      animationDelay: `${i * 0.05}s`,
+                    }}
+                  />
+                ))}
+              </div>
+
+              <div className="absolute bottom-0 left-0 z-10 h-1 w-full bg-white/10">
                 <div className="h-full bg-violet-400" style={{ width: `${videoProgress}%` }} />
               </div>
+
+              <style>{`
+                @keyframes cosWave { 0%, 100% { transform: scaleY(0.25); } 50% { transform: scaleY(1); } }
+                @keyframes cosSweep { 0% { transform: translateX(-20%) rotate(12deg); } 50% { transform: translateX(20%) rotate(12deg); } 100% { transform: translateX(-20%) rotate(12deg); } }
+                @keyframes cosFade { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+              `}</style>
             </div>
           </div>
         </div>
