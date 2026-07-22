@@ -48,7 +48,7 @@ export default function TargetList() {
   if (targets.length === 0) {
     return (
       <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
-        No automation targets yet. Create one to let CreatorOS work for you.
+        No automation targets yet. Create one to let Synapse-X-CreatorOS work for you.
       </div>
     );
   }

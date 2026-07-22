@@ -6,13 +6,13 @@ const FAQS = [
     icon: Terminal,
     question: "How do I generate content?",
     answer:
-      "Go to the Command Center and type any request in plain English, like write a script for my next video. CreatorOS routes it to the right AI agent automatically.",
+      "Go to the Command Center and type any request in plain English, like write a script for my next video. Synapse-X-CreatorOS routes it to the right AI agent automatically.",
   },
   {
     icon: Zap,
     question: "What is Automation?",
     answer:
-      "Automation lets you set a recurring target, such as one image every day, and CreatorOS generates it for you in the background with no manual command needed.",
+      "Automation lets you set a recurring target, such as one image every day, and Synapse-X-CreatorOS generates it for you in the background with no manual command needed.",
   },
   {
     icon: FolderKanban,
@@ -33,7 +33,7 @@ export default function HelpPage() {
     <MainLayout>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground">Help and Support</h1>
-        <p className="mt-2 text-muted-foreground">Everything you need to know about CreatorOS.</p>
+        <p className="mt-2 text-muted-foreground">Everything you need to know about Synapse-X-CreatorOS.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

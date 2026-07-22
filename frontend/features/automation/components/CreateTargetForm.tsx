@@ -94,7 +94,7 @@ export default function CreateTargetForm() {
       <div>
         <h2 className="text-xl font-semibold text-foreground">New Automation Target</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          CreatorOS will automatically generate this on a recurring schedule.
+          Synapse-X-CreatorOS will automatically generate this on a recurring schedule.
         </p>
       </div>
 

@@ -8,7 +8,7 @@ export default function AutomationPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground">Automation</h1>
         <p className="mt-2 text-muted-foreground">
-          Set a target and CreatorOS will generate and manage content on autopilot.
+          Set a target and Synapse-X-CreatorOS will generate and manage content on autopilot.
         </p>
       </div>
 

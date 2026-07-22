@@ -430,7 +430,7 @@ export default function SettingsPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground">Settings</h1>
         <p className="mt-2 text-muted-foreground">
-          Manage your CreatorOS account, security, and workspace preferences.
+          Manage your Synapse-X-CreatorOS account, security, and workspace preferences.
         </p>
       </div>
 
@@ -511,7 +511,7 @@ export default function SettingsPage() {
         <div className="min-w-0 flex-1 space-y-6">
           {activeTab === "profile" && (
             <form onSubmit={handleProfileSave}>
-              <SectionCard icon={User} title="Profile" description="This is how you appear across CreatorOS.">
+              <SectionCard icon={User} title="Profile" description="This is how you appear across Synapse-X-CreatorOS.">
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="fullName">Full Name</Label>
@@ -617,7 +617,7 @@ export default function SettingsPage() {
           )}
 
           {activeTab === "appearance" && (
-            <SectionCard icon={Palette} title="Appearance" description="Choose how CreatorOS looks on this device.">
+            <SectionCard icon={Palette} title="Appearance" description="Choose how Synapse-X-CreatorOS looks on this device.">
               {mountedTheme && (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   {[
@@ -652,7 +652,7 @@ export default function SettingsPage() {
             <SectionCard
               icon={Youtube}
               title="Connected Accounts"
-              description="Publish generated videos directly from CreatorOS."
+              description="Publish generated videos directly from Synapse-X-CreatorOS."
             >
               {loadingExtras ? (
                 <div className="flex items-center justify-center py-8">

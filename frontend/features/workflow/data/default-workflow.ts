@@ -3,7 +3,7 @@ import { Workflow } from "../types/workflow";
 export const defaultWorkflow: Workflow = {
   id: "youtube-automation",
   name: "YouTube Automation Workflow",
-  description: "Default CreatorOS workflow for fully automated video creation.",
+  description: "Default Synapse-X-CreatorOS workflow for fully automated video creation.",
   steps: [
     {
       id: "planner",

@@ -191,7 +191,7 @@ export default function AssetsList({ assetType, title, subtitle }: AssetsListPro
               ) : null}
               {assetType === "video" ? (
                 <div className="mt-3">
-                  <PublishToYouTubeButton assetId={asset.id} defaultTitle={asset.prompt ?? "CreatorOS video"} />
+                  <PublishToYouTubeButton assetId={asset.id} defaultTitle={asset.prompt ?? "Synapse-X-CreatorOS video"} />
                 </div>
               ) : null}
             </div>

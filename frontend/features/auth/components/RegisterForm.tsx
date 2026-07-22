@@ -37,8 +37,8 @@ export default function RegisterForm() {
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-5">
       <div className="mb-2 flex items-center gap-2 lg:hidden">
-        <img src="/logo.png" alt="CreatorOS" className="h-8 w-8 rounded-lg object-cover" />
-        <span className="text-sm font-semibold text-foreground">CreatorOS</span>
+        <img src="/logo.png" alt="Synapse-X-CreatorOS" className="h-8 w-8 shrink-0 rounded-lg object-cover" />
+        <span className="text-sm font-semibold text-foreground">Synapse-X-CreatorOS</span>
       </div>
 
       <div className="space-y-1.5">

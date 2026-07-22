@@ -42,7 +42,7 @@ export default function AnalyticsPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground">Analytics</h1>
         <p className="mt-2 text-muted-foreground">
-          A breakdown of everything CreatorOS has generated for you.
+          A breakdown of everything Synapse-X-CreatorOS has generated for you.
         </p>
       </div>
 

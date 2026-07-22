@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CreatorOS",
+  title: "Synapse-X-CreatorOS",
   description: "AI-powered creator operating system.",
 };
 

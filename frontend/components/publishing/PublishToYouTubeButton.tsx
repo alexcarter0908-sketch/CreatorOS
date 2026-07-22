@@ -50,7 +50,7 @@ export default function PublishToYouTubeButton({
     setError(null);
     try {
       await apiClient.post(`/api/v1/publish/youtube/upload/${assetId}`, {
-        title: defaultTitle || "CreatorOS video",
+        title: defaultTitle || "Synapse-X-CreatorOS video",
         description: defaultDescription,
         tags: [],
         privacy_status: "private",
