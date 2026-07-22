@@ -1,9 +1,9 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import asyncio
 import json
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -131,32 +131,6 @@ def detect_asset_type(command: str) -> str:
         return "audio"
 
     return "text"
-
-
-def detect_image_purpose(command: str) -> str:
-    """
-    Separate from detect_asset_type() on purpose: the asset's stored
-    asset_type stays "image" either way (so it keeps showing up under
-    /thumbnails, filters, etc. exactly as before) - this only decides
-    what *shape* to generate it at (see media_specs.py).
-    """
-    command = command.lower()
-
-    purpose_words = [
-        ("thumbnail", "thumbnail"),
-        ("banner", "banner"),
-        ("cover", "cover"),
-        ("logo", "logo"),
-        ("poster", "poster"),
-        ("profile picture", "profile_photo"),
-        ("profile photo", "profile_photo"),
-        ("avatar", "profile_photo"),
-    ]
-    for word, purpose in purpose_words:
-        if word in command:
-            return purpose
-
-    return "image"
 
 
 def _wants_full_pipeline(command: str) -> bool:
@@ -346,7 +320,6 @@ async def run_command(
     ai_request = AIRequest(
         prompt=request.command,
         asset_type=asset_type,
-        purpose=detect_image_purpose(request.command) if asset_type == "image" else None,
         project_id=request.project_id,
         owner_id=current_user.id,
         history=history,
@@ -435,6 +408,7 @@ async def run_command(
 @router.post("/run/stream")
 async def run_command_stream(
     request: CommandRequest,
+    http_request: Request,
     current_user: User = Depends(get_current_user),
 ):
     owner_id = current_user.id
@@ -511,7 +485,6 @@ async def run_command_stream(
                 ai_request = AIRequest(
                     prompt=request.command,
                     asset_type=asset_type,
-                    purpose=detect_image_purpose(request.command) if asset_type == "image" else None,
                     project_id=request.project_id,
                     owner_id=owner_id,
                     history=history,
@@ -663,6 +636,7 @@ async def run_command_stream(
 
             collected = ""
             stream_failed = False
+            client_stopped = False
 
             try:
                 groq = GroqProvider()
@@ -672,6 +646,11 @@ async def run_command_stream(
                 ):
                     collected += delta
                     yield f"event: token\ndata: {json.dumps({'text': delta})}\n\n"
+                    # The user may have clicked Stop - no point paying for
+                    # more provider tokens once nobody's listening.
+                    if await http_request.is_disconnected():
+                        client_stopped = True
+                        break
             except Exception:
                 stream_failed = True
 
@@ -714,7 +693,7 @@ async def run_command_stream(
                 extra_metadata = {"text": collected}
                 if sources:
                     extra_metadata["sources"] = sources
-                asset_service.mark_completed(
+                AssetRepository(db).mark_completed(
                     asset,
                     file_url="",
                     storage_path="",

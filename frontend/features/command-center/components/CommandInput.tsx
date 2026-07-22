@@ -41,7 +41,7 @@ import { useCommandStore } from "../store/command.store";
 import { runCommand, runCommandStream } from "../services/command.service";
 import { fetchConversation } from "../services/conversation.service";
 import { getStoredConversationId } from "../services/command.service";
-import { getAsset, downloadAsset } from "@/features/assets/services/asset.service";
+import { getAsset } from "@/features/assets/services/asset.service";
 import type { ChatMessage, ChatAttachment, AttachmentKind, ChatSource } from "../types/command";
 import type { AICommandHistoryTurn } from "@/lib/ai/gateway";
 import { clearStoredConversationId } from "../services/command.service";
@@ -55,6 +55,7 @@ const COLLAPSE_LENGTH = 500;
 const COLLAPSE_LINES = 500;
 const WAVE_BAR_COUNT = 28;
 const TEMPLATES_STORAGE_KEY = "creatoros_prompt_templates";
+const PROVIDER_STATUS_STORAGE_KEY = "creatoros_provider_status";
 
 // NOTE: word order matters here - the backend's actual message is
 // "No provider available for asset type '...'" (provider comes before
@@ -177,6 +178,27 @@ function loadTemplates(): PromptTemplate[] {
 function saveTemplates(templates: PromptTemplate[]) {
   if (typeof window === "undefined") return;
   localStorage.setItem(TEMPLATES_STORAGE_KEY, JSON.stringify(templates));
+}
+
+interface ProviderStatusMap {
+  [assetType: string]: { ok: boolean; updatedAt: string };
+}
+
+function loadProviderStatus(): ProviderStatusMap {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(PROVIDER_STATUS_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as ProviderStatusMap) : {};
+  } catch {
+    return {};
+  }
+}
+
+function recordProviderStatus(assetType: string, ok: boolean) {
+  if (typeof window === "undefined") return;
+  const current = loadProviderStatus();
+  current[assetType] = { ok, updatedAt: new Date().toISOString() };
+  localStorage.setItem(PROVIDER_STATUS_STORAGE_KEY, JSON.stringify(current));
 }
 
 /* ---------- Code block with copy ---------- */
@@ -370,11 +392,40 @@ function AttachmentPreview({ attachment }: { attachment: ChatAttachment }) {
   );
 }
 
+/* ---------- Feature 3: Provider status indicator ---------- */
+function ProviderStatusBar({ status }: { status: ProviderStatusMap }) {
+  const entries = Object.entries(status);
+  if (entries.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 border-b border-border bg-muted/40 px-4 py-1.5 text-[11px]">
+      <span className="font-medium text-muted-foreground">Status:</span>
+      {entries.map(([assetType, s]) => (
+        <span
+          key={assetType}
+          className={`flex items-center gap-1 rounded-full px-2 py-0.5 font-medium ${
+            s.ok ? "bg-emerald-500/10 text-emerald-600" : "bg-destructive/10 text-destructive"
+          }`}
+          title={new Date(s.updatedAt).toLocaleString()}
+        >
+          <span className={`h-1.5 w-1.5 rounded-full ${s.ok ? "bg-emerald-500" : "bg-destructive"}`} />
+          {assetType}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export default function CommandInput() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const firstName = user?.full_name?.trim().split(/\s+/)[0] || "there";
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  function handleStop() {
+    abortControllerRef.current?.abort();
+  }
   const [prompt, setPrompt] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -394,12 +445,16 @@ export default function CommandInput() {
   // the batch-variations toggle - keeps the toolbar from being cluttered.
   const [toolsOpen, setToolsOpen] = useState(false);
 
+  // Feature 3: provider status (client-side memory of last known result per asset type)
+  const [providerStatus, setProviderStatus] = useState<ProviderStatusMap>({});
+
   // Feature 6: batch/bulk generation
   const [batchMode, setBatchMode] = useState(false);
   const BATCH_COUNT = 3;
 
   useEffect(() => {
     setTemplatesState(loadTemplates());
+    setProviderStatus(loadProviderStatus());
   }, []);
 
   function toggleSources(messageId: string) {
@@ -482,14 +537,6 @@ export default function CommandInput() {
   function handleCopy(text: string) {
     navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard.");
-  }
-
-  async function handleDownload(assetId: string) {
-    try {
-      await downloadAsset(assetId);
-    } catch {
-      toast.error("Failed to download file.");
-    }
   }
 
   function handleEdit(text: string) {
@@ -703,6 +750,11 @@ export default function CommandInput() {
       setExpandedSources((prev) => new Set(prev).add(assistantId));
     }
 
+    if (asset.asset_type) {
+      recordProviderStatus(asset.asset_type, asset.status !== "failed");
+      setProviderStatus(loadProviderStatus());
+    }
+
     if (asset.status === "failed" && asset.error_message) {
       const msg = asset.error_message;
       if (NEEDS_UPGRADE_PATTERN.test(msg)) {
@@ -770,19 +822,38 @@ export default function CommandInput() {
       // progress instead of a static "Generating..." placeholder.
       // For image/video/audio/document/seo it behaves the same as the
       // buffered call (one completion event) - no regression there. ===
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       let streamedText = "";
       let receivedAnyToken = false;
-      const result = await runCommandStream(value || "Sent attachment(s)", history, {
-        onToken: (delta) => {
-          receivedAnyToken = true;
-          streamedText += delta;
-          updateMessage(assistantId, { content: streamedText, status: "pending" });
+      const result = await runCommandStream(
+        value || "Sent attachment(s)",
+        history,
+        {
+          onToken: (delta) => {
+            receivedAnyToken = true;
+            streamedText += delta;
+            updateMessage(assistantId, { content: streamedText, status: "pending" });
+          },
+          onDone: () => {},
         },
-        onDone: () => {},
-      });
+        controller.signal
+      );
+      abortControllerRef.current = null;
 
-      finalizeFromAsset(assistantId, result.asset);
+      if ("asset" in result) {
+        finalizeFromAsset(assistantId, result.asset);
+      } else {
+        // User hit Stop mid-stream - keep whatever text arrived so far
+        // instead of discarding it or treating it as an error.
+        updateMessage(assistantId, {
+          content: result.partialText || streamedText,
+          status: "completed",
+        });
+      }
     } catch (error) {
+      abortControllerRef.current = null;
       const message = extractErrorMessage(error);
       updateMessage(assistantId, { status: "failed", errorMessage: message });
       if (NEEDS_UPGRADE_PATTERN.test(message)) {
@@ -909,6 +980,11 @@ export default function CommandInput() {
               assetId: videoStep?.asset_id || imageStep?.asset_id || textStep?.asset_id || undefined,
           });
 
+          if (assetType) {
+            recordProviderStatus(assetType, wf.status !== "failed");
+            setProviderStatus(loadProviderStatus());
+          }
+
           if (needsUpgrade) {
             toast.error(getDisplayErrorMessage(firstFailedError), {
               duration: Infinity,
@@ -990,6 +1066,8 @@ export default function CommandInput() {
         </div>
       </div>
 
+      <ProviderStatusBar status={providerStatus} />
+
       <div
         ref={scrollRef}
         onMouseUp={handleBubbleMouseUp}
@@ -1005,10 +1083,10 @@ export default function CommandInput() {
             </p>
             <div className="mt-6 flex max-w-2xl flex-wrap items-center justify-center gap-2.5">
               {[
-                { label: "🎬 Write a video script", text: "Write a 60-second YouTube script about " },
-                { label: "🖼️ Design a thumbnail", text: "Generate a thumbnail idea for a video about " },
-                { label: "🎙️ Narrate a voiceover", text: "Write and narrate a short voiceover about " },
-                { label: "🔍 Optimize for SEO", text: "Write SEO title, description, and tags for a video about " },
+                { label: "\ud83c\udfac Write a video script", text: "Write a 60-second YouTube script about " },
+                { label: "\ud83d\uddbc\ufe0f Design a thumbnail", text: "Generate a thumbnail idea for a video about " },
+                { label: "\ud83c\udf99\ufe0f Narrate a voiceover", text: "Write and narrate a short voiceover about " },
+                { label: "\ud83d\udd0d Optimize for SEO", text: "Write SEO title, description, and tags for a video about " },
               ].map((chip) => (
                 <button
                   key={chip.label}
@@ -1081,20 +1159,6 @@ export default function CommandInput() {
                 ) : null}
                 {message.status === "completed" && message.fileUrl && message.assetType === "audio" ? (
                   <audio src={message.fileUrl} controls className="w-full" />
-                ) : null}
-                {message.status === "completed" &&
-                message.fileUrl &&
-                message.assetId &&
-                (message.assetType === "image" || message.assetType === "video" || message.assetType === "audio") ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-1.5 gap-1.5"
-                    onClick={() => handleDownload(message.assetId as string)}
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    Download
-                  </Button>
                 ) : null}
 
                 {message.status === "completed" && message.sources && message.sources.length > 0 && expandedSources.has(message.id) ? (
@@ -1298,7 +1362,7 @@ export default function CommandInput() {
                 onChange={(e) => setPrompt(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onPaste={handlePaste}
-                placeholder="Chat with Synapse-X-CreatorOS. Ask for scripts, images, videos, or SEO content"
+                placeholder="Chat with CreatorOS. Ask for scripts, images, videos, or SEO content"
                 className="w-full resize-none border-0 bg-transparent px-1 py-2.5 focus-visible:ring-0 min-h-[44px] max-h-[200px]"
               />
             </div>
@@ -1336,12 +1400,13 @@ export default function CommandInput() {
               </Button>
 
               <Button
-                onClick={handleSubmit}
-                disabled={isSubmitting || (!prompt.trim() && !pastedBlock && attachments.length === 0)}
+                onClick={isSubmitting ? handleStop : handleSubmit}
+                disabled={!isSubmitting && !prompt.trim() && !pastedBlock && attachments.length === 0}
                 size="icon"
                 className="h-9 w-9 rounded-lg shadow-sm"
+                title={isSubmitting ? "Stop generating" : "Send"}
               >
-                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {isSubmitting ? <Square className="h-4 w-4 fill-current" /> : <Send className="h-4 w-4" />}
               </Button>
             </div>
           </div>
