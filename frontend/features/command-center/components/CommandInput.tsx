@@ -33,10 +33,10 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import BrandWatermark from "@/components/common/BrandWatermark";
-import apiClient from "@/lib/api/client";
 import { useAuthStore } from "@/features/auth/store/auth.store";
+import { Textarea } from "@/components/ui/textarea";
+import apiClient from "@/lib/api/client";
 import { useCommandStore } from "../store/command.store";
 import { runCommand, runCommandStream } from "../services/command.service";
 import { fetchConversation } from "../services/conversation.service";
