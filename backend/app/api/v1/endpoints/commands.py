@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
 import json
@@ -693,7 +693,7 @@ async def run_command_stream(
                 extra_metadata = {"text": collected}
                 if sources:
                     extra_metadata["sources"] = sources
-                AssetRepository(db).mark_completed(
+                asset_service.mark_completed(
                     asset,
                     file_url="",
                     storage_path="",
