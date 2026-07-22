@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import { create } from "zustand";
 
+import { ACCESS_TOKEN_KEY } from "@/lib/api/client";
 import {
   login as loginService,
   register as registerService,
@@ -22,8 +23,6 @@ interface AuthStore extends AuthState {
   setUser: (user: User | null) => void;
   hydrate: () => Promise<void>;
 }
-
-const TOKEN_KEY = "creatoros_access_token";
 
 export const useAuthStore = create<AuthStore>((set) => ({
   user: null,
@@ -65,7 +64,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
   },
 
   logout() {
-    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem("creatoros_active_conversation");
 
     set({
@@ -80,7 +79,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
   },
 
   async hydrate() {
-    const token = localStorage.getItem(TOKEN_KEY);
+    const token = localStorage.getItem(ACCESS_TOKEN_KEY);
 
     if (!token) {
       set({ isHydrated: true });
@@ -97,7 +96,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
         isHydrated: true,
       });
     } catch {
-      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(ACCESS_TOKEN_KEY);
 
       set({
         user: null,

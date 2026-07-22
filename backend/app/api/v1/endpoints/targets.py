@@ -52,6 +52,44 @@ def list_targets(
     return repo.list_by_owner(current_user.id)
 
 
+@router.post(
+    "/{target_id}/pause",
+    response_model=AutoTargetResponse,
+)
+def pause_target(
+    target_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    repo = AutoTargetRepository(db)
+    target = repo.get_by_id(target_id)
+    if target is None or target.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Target not found.",
+        )
+    return repo.deactivate(target)
+
+
+@router.post(
+    "/{target_id}/resume",
+    response_model=AutoTargetResponse,
+)
+def resume_target(
+    target_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    repo = AutoTargetRepository(db)
+    target = repo.get_by_id(target_id)
+    if target is None or target.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Target not found.",
+        )
+    return repo.activate(target)
+
+
 @router.delete(
     "/{target_id}",
     status_code=status.HTTP_204_NO_CONTENT,

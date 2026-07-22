@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import uuid
 from pathlib import Path
@@ -38,6 +38,23 @@ class LocalStorage:
         public_url = f"{self.base_url}/{relative_path}"
 
         return storage_path, public_url
+
+    def delete(self, storage_path: str) -> None:
+        """Remove a previously-saved file from disk. Safe to call with an
+        empty/blank path (e.g. text assets, which never had a file) or a
+        path that no longer exists - deletion should never crash the
+        request that triggered it."""
+        if not storage_path:
+            return
+
+        path = Path(storage_path)
+        try:
+            if path.is_file():
+                path.unlink()
+        except OSError:
+            # Best-effort cleanup - a locked/missing file shouldn't block
+            # the asset record itself from being deleted.
+            pass
 
 
 _storage_instance: LocalStorage | None = None

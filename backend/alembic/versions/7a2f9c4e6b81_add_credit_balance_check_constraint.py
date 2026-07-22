@@ -1,14 +1,14 @@
 ﻿"""add non-negative check constraint to billing_accounts.credit_balance
 
 Revision ID: 7a2f9c4e6b81
-Revises: d12191c4f3c1
+Revises: f3c8b91d4a20
 Create Date: 2026-07-22 00:00:00.000000
 """
 from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = '7a2f9c4e6b81'
-down_revision = 'd12191c4f3c1'
+down_revision = 'f3c8b91d4a20'
 branch_labels = None
 depends_on = None
 

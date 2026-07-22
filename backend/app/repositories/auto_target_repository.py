@@ -62,6 +62,13 @@ class AutoTargetRepository:
         self.db.refresh(target)
         return target
 
+    def activate(self, target: AutoTarget) -> AutoTarget:
+        target.is_active = True
+        self.db.add(target)
+        self.db.commit()
+        self.db.refresh(target)
+        return target
+
     def delete(self, target: AutoTarget) -> None:
         self.db.delete(target)
         self.db.commit()

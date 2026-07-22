@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useEffect } from "react";
-import { Trash2, Zap, ZapOff } from "lucide-react";
+import { Pause, Play, Trash2, Zap, ZapOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useAutoTargetStore } from "../store/target.store";
@@ -28,6 +28,7 @@ export default function TargetList() {
   const error = useAutoTargetStore((state) => state.error);
   const fetchTargets = useAutoTargetStore((state) => state.fetchTargets);
   const removeTarget = useAutoTargetStore((state) => state.removeTarget);
+  const toggleTarget = useAutoTargetStore((state) => state.toggleTarget);
 
   const projects = useProjectStore((state) => state.projects);
   const fetchProjects = useProjectStore((state) => state.fetchProjects);
@@ -104,14 +105,29 @@ export default function TargetList() {
               </div>
             </div>
 
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => removeTarget(target.id)}
-              className="text-red-500 hover:bg-red-50 hover:text-red-600"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            <div className="flex shrink-0 items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => toggleTarget(target.id, target.is_active)}
+                title={target.is_active ? "Pause" : "Resume"}
+                className="text-muted-foreground hover:bg-accent"
+              >
+                {target.is_active ? (
+                  <Pause className="h-4 w-4" />
+                ) : (
+                  <Play className="h-4 w-4" />
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => removeTarget(target.id)}
+                className="text-red-500 hover:bg-red-50 hover:text-red-600"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         );
       })}

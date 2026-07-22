@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -15,6 +15,7 @@ from app.schemas.asset import (
     AssetTextUpdateRequest,
 )
 from app.services.billing import credit_service
+from app.services.storage import get_storage
 
 router = APIRouter(
     prefix="/assets",
@@ -293,5 +294,6 @@ def delete_asset(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Asset not found.",
         )
+    get_storage().delete(asset.storage_path)
     repo.delete(asset)
     return None

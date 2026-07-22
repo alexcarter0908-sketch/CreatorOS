@@ -14,3 +14,13 @@ export async function createTarget(payload: CreateAutoTargetPayload): Promise<Au
 export async function deleteTarget(id: string): Promise<void> {
   await apiClient.delete(`/api/v1/targets/${id}`);
 }
+
+export async function pauseTarget(id: string): Promise<AutoTarget> {
+  const { data } = await apiClient.post<AutoTarget>(`/api/v1/targets/${id}/pause`);
+  return data;
+}
+
+export async function resumeTarget(id: string): Promise<AutoTarget> {
+  const { data } = await apiClient.post<AutoTarget>(`/api/v1/targets/${id}/resume`);
+  return data;
+}
