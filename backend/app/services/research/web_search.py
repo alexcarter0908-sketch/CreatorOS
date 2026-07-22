@@ -563,8 +563,26 @@ _PLACE_INTENT_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# A query can contain "location" and still NOT be a "find this indexed
+# business on Google Maps" query - a real-estate/development project
+# (often not-yet-built, or too new to be indexed as a physical business)
+# is one such case. Routing these through the Places API was matching
+# whatever loosely-similar-named business Google Maps happened to have
+# on file (e.g. a same-initials therapy clinic on a different continent)
+# instead of the actual project - these are answered far more reliably
+# by regular web search (articles, developer sites), so they're excluded
+# from place-routing even when "location" is also present.
+_PROJECT_INTENT_PATTERN = re.compile(
+    r"\b(project|developers?|society|housing\s+scheme|installment|"
+    r"booking|payment\s+plan|possession|eoi|plot|phase\s?\d|launch(ed)?|"
+    r"pre[\s-]?launch)\b",
+    re.IGNORECASE,
+)
+
 
 def _looks_like_place_query(query: str) -> bool:
+    if _PROJECT_INTENT_PATTERN.search(query):
+        return False
     return bool(_PLACE_INTENT_PATTERN.search(query))
 
 
@@ -694,7 +712,12 @@ def _web_search_impl(query: str, max_results: int = 5, deep: bool = False, lat: 
 
 def _format_context_from_results(results: list[dict]) -> str:
     if not results:
-        return "(No live web search results available for this query.)"
+        return (
+            "(No live web search results available for this query.)\n\n"
+            "[GROUNDING RULE] There is no search data to answer from. "
+            "Say plainly that you don't have verified/current information "
+            "on this rather than guessing or inventing an answer."
+        )
 
     domains = {_domain_of(r.get("url", "")) for r in results if r.get("url")}
     domains.discard("")
@@ -709,6 +732,18 @@ def _format_context_from_results(results: list[dict]) -> str:
         body = r.get("full_text") or r.get("snippet", "")
         body = body[:3000]
         lines.append(f"{i}. {trust_tag}{r.get('title', '')}\n   {body}\n   Source: {url}")
+
+    lines.append(
+        "\n[GROUNDING RULE - MANDATORY] Only state facts that are "
+        "explicitly written in the results above. Never combine or infer "
+        "a connection between two separate facts (e.g. assuming a "
+        "business's name, rating, or category confirms something else "
+        "the user mentioned) unless the SAME result explicitly states "
+        "that connection. If a result's name/category/location doesn't "
+        "clearly match what the user asked about, say plainly that you "
+        "couldn't find a confirmed match instead of presenting a "
+        "loosely-similar result as if it were the right one."
+    )
 
     return "\n".join(lines)
 

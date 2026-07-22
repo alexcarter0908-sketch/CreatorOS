@@ -32,18 +32,29 @@ export interface RunCommandStreamCallbacks {
   onError?: (message: string) => void;
 }
 
+export interface StreamStoppedResult {
+  stopped: true;
+  partialText: string;
+}
+
 /**
  * Real token-by-token streaming via the backend's SSE endpoint
  * (/api/v1/commands/run/stream). Reads the raw response body stream,
  * parses SSE "event:"/"data:" frames as they arrive, and invokes the
  * matching callback per event -- no simulation, no buffering of the
  * full response before displaying it.
+ *
+ * `signal` (optional) lets the caller cancel generation at any time
+ * (e.g. a Stop button) - when aborted, this resolves with
+ * { stopped: true, partialText } instead of throwing, so the partial
+ * response stays visible and the UI can offer a "Continue" option.
  */
 export async function runCommandStream(
   command: string,
   history: AICommandHistoryTurn[] = [],
-  callbacks: RunCommandStreamCallbacks
-): Promise<RunCommandResult> {
+  callbacks: RunCommandStreamCallbacks,
+  signal?: AbortSignal
+): Promise<RunCommandResult | StreamStoppedResult> {
   const conversationId = getStoredConversationId();
   const token =
     typeof window !== "undefined"
@@ -63,6 +74,7 @@ export async function runCommandStream(
       conversation_id: conversationId,
       history,
     }),
+    signal,
   });
 
   if (!response.ok || !response.body) {
@@ -79,49 +91,69 @@ export async function runCommandStream(
   let finalConversationId: string | null = conversationId;
   let finalStatus = "completed";
   let sawError: string | null = null;
+  let accumulatedText = "";
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
-    buffer += decoder.decode(value, { stream: true });
+      buffer += decoder.decode(value, { stream: true });
 
-    const frames = buffer.split("\n\n");
-    buffer = frames.pop() ?? "";
+      const frames = buffer.split("\n\n");
+      buffer = frames.pop() ?? "";
 
-    for (const frame of frames) {
-      if (!frame.trim()) continue;
+      for (const frame of frames) {
+        if (!frame.trim()) continue;
 
-      let eventName = "message";
-      let dataLine = "";
+        let eventName = "message";
+        let dataLine = "";
 
-      for (const line of frame.split("\n")) {
-        if (line.startsWith("event:")) {
-          eventName = line.slice("event:".length).trim();
-        } else if (line.startsWith("data:")) {
-          dataLine = line.slice("data:".length).trim();
+        for (const line of frame.split("\n")) {
+          if (line.startsWith("event:")) {
+            eventName = line.slice("event:".length).trim();
+          } else if (line.startsWith("data:")) {
+            dataLine = line.slice("data:".length).trim();
+          }
+        }
+
+        if (!dataLine) continue;
+
+        let parsed: Record<string, unknown>;
+        try {
+          parsed = JSON.parse(dataLine);
+        } catch {
+          continue;
+        }
+
+        if (eventName === "token" && typeof parsed.text === "string") {
+          accumulatedText += parsed.text;
+          callbacks.onToken(parsed.text);
+        } else if (eventName === "done") {
+          finalAssetId = (parsed.asset_id as string) ?? null;
+          finalConversationId = (parsed.conversation_id as string) ?? finalConversationId;
+          finalStatus = (parsed.status as string) ?? "completed";
+        } else if (eventName === "error") {
+          sawError = (parsed.detail as string) ?? "Streaming request failed.";
         }
       }
-
-      if (!dataLine) continue;
-
-      let parsed: Record<string, unknown>;
-      try {
-        parsed = JSON.parse(dataLine);
-      } catch {
-        continue;
-      }
-
-      if (eventName === "token" && typeof parsed.text === "string") {
-        callbacks.onToken(parsed.text);
-      } else if (eventName === "done") {
-        finalAssetId = (parsed.asset_id as string) ?? null;
-        finalConversationId = (parsed.conversation_id as string) ?? finalConversationId;
-        finalStatus = (parsed.status as string) ?? "completed";
-      } else if (eventName === "error") {
-        sawError = (parsed.detail as string) ?? "Streaming request failed.";
-      }
     }
+  } catch (error) {
+    const isAbort =
+      (error instanceof DOMException && error.name === "AbortError") ||
+      (signal?.aborted ?? false);
+    if (isAbort) {
+      // User hit Stop - this is not a failure, just an early cutoff.
+      // Cancelling the reader tells the browser to close the
+      // underlying connection instead of leaving it dangling.
+      try {
+        await reader.cancel();
+      } catch {
+        // ignore - connection is being torn down anyway
+      }
+      return { stopped: true, partialText: accumulatedText };
+    }
+    throw error;
   }
 
   if (sawError) {

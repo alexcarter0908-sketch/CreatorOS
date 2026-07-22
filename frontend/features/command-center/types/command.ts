@@ -2,6 +2,7 @@
   PENDING: "pending",
   COMPLETED: "completed",
   FAILED: "failed",
+  STOPPED: "stopped",
 } as const;
 export type CommandStatus = (typeof COMMAND_STATUS)[keyof typeof COMMAND_STATUS];
 export type ChatRole = "user" | "assistant";
