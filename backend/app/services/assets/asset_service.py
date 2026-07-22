@@ -48,7 +48,7 @@ class AssetService:
             status="pending",
         )
 
-    def _mark_completed(self, asset: Asset, **kwargs) -> Asset:
+    def mark_completed(self, asset: Asset, **kwargs) -> Asset:
         """Wraps repo.mark_completed so every completion path also gives
         the parent project a chance to auto-promote draft -> active."""
         result = self.repo.mark_completed(asset, **kwargs)
@@ -76,7 +76,7 @@ class AssetService:
             subfolder=asset.asset_type,
         )
 
-        return self._mark_completed(
+        return self.mark_completed(
             asset,
             file_url=public_url,
             storage_path=storage_path,
@@ -157,7 +157,7 @@ class AssetService:
 
         if asset.asset_type == "text":
             text_value = payload if isinstance(payload, str) else str(payload)
-            return self._mark_completed(
+            return self.mark_completed(
                 asset,
                 file_url="",
                 storage_path="",
@@ -190,7 +190,7 @@ class AssetService:
 
         if not remote_url:
             extra["raw_result"] = payload if not isinstance(payload, (dict, list)) else None
-            return self._mark_completed(
+            return self.mark_completed(
                 asset,
                 file_url="",
                 storage_path="",
@@ -207,7 +207,7 @@ class AssetService:
             extra["download_error"] = str(e)
             if not remote_url.startswith("data:"):
                 extra["source_url"] = remote_url
-            return self._mark_completed(
+            return self.mark_completed(
                 asset,
                 file_url=remote_url if not remote_url.startswith("data:") else "",
                 storage_path="",
@@ -219,7 +219,7 @@ class AssetService:
         if not remote_url.startswith("data:"):
             extra["source_url"] = remote_url
 
-        return self._mark_completed(
+        return self.mark_completed(
             asset,
             file_url=public_url,
             storage_path=storage_path,

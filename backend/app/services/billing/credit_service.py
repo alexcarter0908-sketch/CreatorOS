@@ -1,13 +1,15 @@
 ﻿from __future__ import annotations
 
 import logging
-from datetime import date
+from datetime import datetime, timedelta, timezone
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.config.settings import settings
+from app.core.pricing.pricing_service import limited_free_config
 from app.database.models.billing import BillingAccount, CreditTransaction
 from app.database.models.user import User
-from app.core.pricing.pricing_service import limited_free_config
 
 LOW_CREDIT_THRESHOLD = 10
 
@@ -18,12 +20,49 @@ class InsufficientCreditsError(Exception):
     pass
 
 
-def _get_or_create_account(db: Session, user_id: str) -> BillingAccount:
-    account = db.query(BillingAccount).filter(BillingAccount.user_id == user_id).first()
-    if account is None:
-        account = BillingAccount(user_id=user_id, credit_balance=0)
-        db.add(account)
+def _local_today() -> str:
+    """Same local-time convention used for automation scheduling
+    (DEFAULT_TIMEZONE_OFFSET_HOURS), so the free daily quota resets at the
+    same day-boundary users see elsewhere in the product instead of the
+    server/UTC day."""
+    local_now = datetime.now(timezone.utc) + timedelta(
+        hours=settings.DEFAULT_TIMEZONE_OFFSET_HOURS
+    )
+    return local_now.date().isoformat()
+
+
+def _get_or_create_account(db: Session, user_id: str, *, lock: bool = False) -> BillingAccount:
+    """Fetch the user's billing account, optionally taking a row-level
+    lock (SELECT ... FOR UPDATE) so concurrent requests for the same user
+    (double-clicks, multiple tabs, retried requests) serialize instead of
+    racing each other on the same balance. Every function that *mutates*
+    the balance must pass lock=True; read-only lookups should not.
+    """
+    query = db.query(BillingAccount).filter(BillingAccount.user_id == user_id)
+    if lock:
+        query = query.with_for_update()
+    account = query.first()
+
+    if account is not None:
+        return account
+
+    # First-time account creation is itself a race: two concurrent
+    # requests can both miss the row above and both try to insert. The
+    # unique constraint on user_id lets only one succeed - catch that
+    # instead of letting it surface as an unhandled 500.
+    account = BillingAccount(user_id=user_id, credit_balance=0)
+    db.add(account)
+    try:
         db.flush()
+    except IntegrityError:
+        db.rollback()
+        query = db.query(BillingAccount).filter(BillingAccount.user_id == user_id)
+        if lock:
+            query = query.with_for_update()
+        account = query.first()
+        if account is None:
+            raise
+
     return account
 
 
@@ -77,7 +116,10 @@ def add_credits(
     description: str,
     paddle_transaction_id: str | None = None,
 ) -> int:
-    account = _get_or_create_account(db, user_id)
+    if amount <= 0:
+        raise ValueError("add_credits amount must be positive.")
+
+    account = _get_or_create_account(db, user_id, lock=True)
     account.credit_balance += amount
     db.add(CreditTransaction(
         user_id=user_id,
@@ -87,7 +129,24 @@ def add_credits(
         description=description,
         paddle_transaction_id=paddle_transaction_id,
     ))
-    db.commit()
+
+    if paddle_transaction_id:
+        # A retried/duplicate webhook delivery for a transaction we've
+        # already credited hits the unique constraint on
+        # paddle_transaction_id - treat that as "already processed"
+        # instead of double-crediting the user or raising a 500.
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            logger.info(
+                "Duplicate Paddle webhook for transaction %s ignored (already credited).",
+                paddle_transaction_id,
+            )
+            return get_balance(db, user_id)
+    else:
+        db.commit()
+
     _reset_low_credit_alert(db, user_id, account.credit_balance)
     return account.credit_balance
 
@@ -99,9 +158,19 @@ def deduct_credits(
     description: str,
     asset_id: str | None = None,
 ) -> int:
-    account = _get_or_create_account(db, user_id)
+    if amount <= 0:
+        raise ValueError("deduct_credits amount must be positive.")
+
+    # lock=True holds a row lock on this user's billing account for the
+    # rest of this transaction, so a second concurrent deduction has to
+    # wait until this one commits (or rolls back) before it can read the
+    # balance - closing the double-spend window that plain read-then-write
+    # leaves open.
+    account = _get_or_create_account(db, user_id, lock=True)
+
     if account.credit_balance < amount:
         raise InsufficientCreditsError(f"Need {amount} credits, have {account.credit_balance}")
+
     account.credit_balance -= amount
     db.add(CreditTransaction(
         user_id=user_id,
@@ -123,7 +192,10 @@ def refund_credits(
     description: str,
     asset_id: str | None = None,
 ) -> int:
-    account = _get_or_create_account(db, user_id)
+    if amount <= 0:
+        raise ValueError("refund_credits amount must be positive.")
+
+    account = _get_or_create_account(db, user_id, lock=True)
     account.credit_balance += amount
     db.add(CreditTransaction(
         user_id=user_id,
@@ -143,8 +215,8 @@ def try_consume_free_quota(db: Session, user_id: str, asset_type: str) -> bool:
     if not config:
         return False
 
-    account = _get_or_create_account(db, user_id)
-    today = date.today().isoformat()
+    account = _get_or_create_account(db, user_id, lock=True)
+    today = _local_today()
 
     if account.free_quota_date != today:
         account.free_quota_date = today
@@ -155,4 +227,7 @@ def try_consume_free_quota(db: Session, user_id: str, asset_type: str) -> bool:
         db.commit()
         return True
 
+    # Nothing to spend, but a day-rollover reset above may still need
+    # persisting, and we must release the row lock either way.
+    db.commit()
     return False

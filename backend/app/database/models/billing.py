@@ -1,6 +1,6 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
-from sqlalchemy import ForeignKey, Integer, String, Text
+from sqlalchemy import CheckConstraint, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
@@ -11,6 +11,12 @@ class BillingAccount(Base, BaseModelMixin):
     """One-to-one with User. Tracks credit balance and daily free quotas."""
 
     __tablename__ = "billing_accounts"
+    __table_args__ = (
+        CheckConstraint(
+            "credit_balance >= 0",
+            name="ck_billing_accounts_credit_balance_non_negative",
+        ),
+    )
 
     user_id: Mapped[str] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"),
@@ -45,6 +51,10 @@ class CreditTransaction(Base, BaseModelMixin):
         ForeignKey("assets.id", ondelete="SET NULL"),
         nullable=True,
     )
-    paddle_transaction_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    paddle_transaction_id: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        unique=True,
+    )
 
     user = relationship("User")
