@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { LogOut, ChevronRight, ChevronLeft, Sparkles } from "lucide-react";
+import { LogOut, ChevronRight, ChevronLeft, Sparkles, X } from "lucide-react";
 
 import { MAIN_NAVIGATION, SECONDARY_NAVIGATION } from "@/lib/navigation";
 import { useAuthStore } from "@/features/auth/store/auth.store";
@@ -10,16 +10,23 @@ import SidebarItem from "./SidebarItem";
 
 const APP_VERSION = "v1.0.0";
 
-export default function Sidebar() {
+interface SidebarProps {
+  /** Mobile off-canvas drawer state - ignored on desktop (md+) where the
+   * sidebar is always visible. */
+  open?: boolean;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ open = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const logout = useAuthStore((state) => state.logout);
   const [expanded, setExpanded] = useState(false);
 
   return (
     <aside
-      className={`flex h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-all duration-200 ${
-        expanded ? "w-64" : "w-[72px]"
-      }`}
+      className={`fixed inset-y-0 left-0 z-40 flex h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-transform duration-200 md:static md:z-auto md:translate-x-0 ${
+        open ? "translate-x-0" : "-translate-x-full"
+      } ${expanded ? "w-64" : "w-[72px]"}`}
     >
       <div className="flex items-center justify-between px-4 py-5">
         {expanded ? (
@@ -33,6 +40,13 @@ export default function Sidebar() {
         ) : (
           <img src="/logo.png" alt="Synapse-X-CreatorOS" className="mx-auto h-8 w-8 rounded-lg object-cover" />
         )}
+        <button
+          onClick={onClose}
+          aria-label="Close menu"
+          className="text-muted-foreground hover:text-sidebar-foreground md:hidden"
+        >
+          <X size={18} />
+        </button>
       </div>
 
       <button

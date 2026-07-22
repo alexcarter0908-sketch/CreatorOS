@@ -1,7 +1,7 @@
 ﻿"use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Bell, CheckCheck, Sparkles } from "lucide-react";
+import { ArrowLeft, Bell, CheckCheck, Sparkles, Menu } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import ThemeToggle from "@/components/theme/ThemeToggle";
 import {
@@ -22,7 +22,11 @@ function timeAgo(iso: string) {
   return `${days}d ago`;
 }
 
-export default function Navbar() {
+interface NavbarProps {
+  onMenuClick?: () => void;
+}
+
+export default function Navbar({ onMenuClick }: NavbarProps) {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const initial = user?.full_name?.charAt(0)?.toUpperCase() ?? "?";
@@ -83,6 +87,13 @@ export default function Navbar() {
   return (
     <header className="flex items-center justify-between border-b border-border bg-background/80 px-8 py-5 backdrop-blur-sm">
       <div className="flex items-center gap-3">
+        <button
+          onClick={onMenuClick}
+          title="Menu"
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground md:hidden"
+        >
+          <Menu className="h-4 w-4" />
+        </button>
         <button
           onClick={() => router.back()}
           title="Back"
