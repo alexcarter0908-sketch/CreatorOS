@@ -110,3 +110,9 @@ CommandInput.txt
 /frontend/features/workflows/types/workflow.ts
 /frontend/features/workflows/index.ts
 /frontend/styles/console-theme.css
+
+apply-*.ps1
+*_diff.txt
+*.livebackup_*
+commandinput_*.tsx
+current-command-input.tsx
