@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.database.models import User
 from app.database.session.database import get_db
 from app.dependencies.auth import get_current_user
+from app.core.ownership import require_project_ownership
 from app.services.workflows.workflow_service import WorkflowService
 
 router = APIRouter(
@@ -56,6 +57,8 @@ async def create_workflow(
 ):
     if not request.steps:
         raise HTTPException(status_code=400, detail="A workflow needs at least one step.")
+
+    require_project_ownership(db, request.project_id, current_user.id)
 
     service = WorkflowService(db)
     workflow = service.create(

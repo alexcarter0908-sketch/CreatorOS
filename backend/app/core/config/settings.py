@@ -120,6 +120,7 @@ class Settings(BaseSettings):
     KNOWLEDGE_CHUNK_OVERLAP: int = 150
     KNOWLEDGE_TOP_K: int = 5
     KNOWLEDGE_MAX_FILE_SIZE_MB: int = 20
+    UPLOAD_MAX_FILE_SIZE_MB: int = 50
 
     model_config = SettingsConfigDict(
         env_file=".env",

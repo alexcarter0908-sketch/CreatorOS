@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.database.models import User
 from app.database.session.database import get_db
 from app.dependencies.auth import get_current_user
+from app.core.config.settings import settings
 from app.services.assets.asset_service import AssetService
 
 router = APIRouter(
@@ -36,6 +37,13 @@ async def upload_file(
 
     if not file_bytes:
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+    max_bytes = settings.UPLOAD_MAX_FILE_SIZE_MB * 1024 * 1024
+    if len(file_bytes) > max_bytes:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File exceeds the {settings.UPLOAD_MAX_FILE_SIZE_MB}MB upload limit.",
+        )
 
     kind = _detect_kind(file.content_type)
 

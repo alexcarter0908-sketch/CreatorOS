@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password, verify_password
@@ -88,9 +88,10 @@ def delete_me(
 ):
     """
     Permanently deletes the current user and everything owned by them
-    (projects, assets, workflows, notifications, billing history, ...)
-    via the ON DELETE CASCADE foreign keys already on those tables.
-    Cannot be undone.
+    (projects, assets, workflows, notifications, ...) via the ON DELETE
+    CASCADE foreign keys already on those tables. Credit transaction
+    history is preserved (anonymized, not deleted) for accounting and
+    dispute-resolution purposes. Cannot be undone.
     """
     if current_user.password_hash:
         if not request.password or not verify_password(request.password, current_user.password_hash):

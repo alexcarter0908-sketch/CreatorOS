@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from sqlalchemy import CheckConstraint, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -38,9 +38,13 @@ class CreditTransaction(Base, BaseModelMixin):
 
     __tablename__ = "credit_transactions"
 
-    user_id: Mapped[str] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
+    # SET NULL (not CASCADE) so deleting a user's account anonymizes their
+    # financial ledger entries instead of erasing them - purchase records,
+    # refunds, and consumption history stay intact for accounting/dispute
+    # purposes even after the account itself is gone.
+    user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
         index=True,
     )
     type: Mapped[str] = mapped_column(String(30), nullable=False)  # purchase | consumption | refund | bonus

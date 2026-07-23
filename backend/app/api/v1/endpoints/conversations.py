@@ -1,8 +1,9 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.ownership import require_project_ownership
 from app.database.models import User
 from app.database.session.database import get_db
 from app.dependencies.auth import get_current_user
@@ -25,6 +26,8 @@ def create_conversation(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    require_project_ownership(db, request.project_id, current_user.id)
+
     repo = ConversationRepository(db)
     return repo.create(
         owner_id=current_user.id,

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
@@ -9,6 +9,7 @@ from app.dependencies.auth import get_current_user
 from app.services.knowledge.knowledge_service import KnowledgeService
 from app.schemas.knowledge import KnowledgeDocumentOut
 from app.core.config.settings import settings
+from app.core.ownership import require_project_ownership
 
 router = APIRouter(
     prefix="/knowledge",
@@ -34,6 +35,8 @@ async def upload_knowledge_file(
             status_code=400,
             detail=f"File {settings.KNOWLEDGE_MAX_FILE_SIZE_MB}MB se bara hai.",
         )
+
+    require_project_ownership(db, project_id, current_user.id)
 
     service = KnowledgeService(db)
     try:
