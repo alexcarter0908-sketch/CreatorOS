@@ -22,6 +22,18 @@ def create_transaction(price_id: str, customer_email: str, custom_data: dict) ->
     Creates a Paddle transaction for a one-time credit-pack purchase.
     Returns Paddle's transaction object, including a checkout URL the
     frontend can redirect to (or open via Paddle.js overlay checkout).
+
+    NOTE on post-payment redirect: where Paddle sends the customer
+    AFTER they finish paying is controlled in the Paddle Dashboard
+    (Checkout > Checkout settings > default payment link), not here.
+    Point that setting at:
+        {FRONTEND_URL}/billing?checkout=success
+    The frontend billing page already knows how to handle that query
+    param (it polls for the credit to land, then shows a success
+    toast). We deliberately do NOT set a "checkout.url" in this
+    request - that field changes Paddle's behavior in ways that could
+    replace their hosted payment page entirely, which would break
+    checkout rather than improve it.
     """
     resp = requests.post(
         f"{_api_base()}/transactions",

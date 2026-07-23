@@ -63,18 +63,21 @@ CREDIT_PACKS: list[dict] = [
         "id": "starter",
         "credits": 500,
         "price_usd": 5.00,
+        "popular": False,
         "paddle_price_id": "REPLACE_WITH_PADDLE_PRICE_ID_STARTER",
     },
     {
         "id": "creator",
         "credits": 1200,
         "price_usd": 10.00,
+        "popular": True,
         "paddle_price_id": "REPLACE_WITH_PADDLE_PRICE_ID_CREATOR",
     },
     {
         "id": "pro",
         "credits": 6500,
         "price_usd": 50.00,
+        "popular": False,
         "paddle_price_id": "REPLACE_WITH_PADDLE_PRICE_ID_PRO",
     },
 ]

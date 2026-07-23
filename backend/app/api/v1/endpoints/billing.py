@@ -23,11 +23,21 @@ router = APIRouter(
     tags=["Billing"],
 )
 
+# Below this many credits we nudge the user to top up (not a hard
+# limit - just a UI hint on the billing page). Roughly "less than
+# enough for a couple of cheap generations".
+LOW_BALANCE_THRESHOLD = 100
+
 
 @router.get("/packs", response_model=list[CreditPackOut])
 async def list_packs():
     return [
-        {"id": p["id"], "credits": p["credits"], "price_usd": p["price_usd"]}
+        {
+            "id": p["id"],
+            "credits": p["credits"],
+            "price_usd": p["price_usd"],
+            "popular": p.get("popular", False),
+        }
         for p in CREDIT_PACKS
     ]
 
@@ -38,22 +48,30 @@ async def get_balance(
     db: Session = Depends(get_db),
 ):
     account = db.query(BillingAccount).filter(BillingAccount.user_id == current_user.id).first()
+    balance = account.credit_balance if account else 0
     return BalanceResponse(
-        credit_balance=account.credit_balance if account else 0,
+        credit_balance=balance,
         free_quota_used_today=account.free_quota_used_today if account else 0,
+        low_balance=balance < LOW_BALANCE_THRESHOLD,
     )
 
 
 @router.get("/history", response_model=TransactionHistoryResponse)
 async def get_history(
+    limit: int = 100,
+    offset: int = 0,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+
     rows = (
         db.query(CreditTransaction)
         .filter(CreditTransaction.user_id == current_user.id)
         .order_by(CreditTransaction.created_at.desc())
-        .limit(100)
+        .offset(safe_offset)
+        .limit(safe_limit)
         .all()
     )
     return TransactionHistoryResponse(transactions=[
@@ -108,16 +126,18 @@ async def paddle_webhook(request: Request, db: Session = Depends(get_db)):
     paddle_txn_id = data.get("id")
 
     if event_type == "transaction.completed" and user_id and credits:
-        credit_service.add_credits(
-            db, user_id, int(credits),
-            description=f"Paddle purchase ({paddle_txn_id})",
-            paddle_transaction_id=paddle_txn_id,
-        )
+        if not credit_service.is_paddle_event_processed(db, paddle_txn_id, "purchase"):
+            credit_service.add_credits(
+                db, user_id, int(credits),
+                description=f"Paddle purchase ({paddle_txn_id})",
+                paddle_transaction_id=paddle_txn_id,
+            )
 
     elif event_type == "transaction.refunded" and user_id and credits:
-        credit_service.deduct_credits(
-            db, user_id, int(credits),
-            description=f"Paddle refund ({paddle_txn_id})",
-        )
+        if not credit_service.is_paddle_event_processed(db, paddle_txn_id, "refund"):
+            credit_service.deduct_credits(
+                db, user_id, int(credits),
+                description=f"Paddle refund ({paddle_txn_id})",
+            )
 
     return {"status": "ok"}

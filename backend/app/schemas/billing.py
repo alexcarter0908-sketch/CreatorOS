@@ -7,11 +7,13 @@ class CreditPackOut(BaseModel):
     id: str
     credits: int
     price_usd: float
+    popular: bool = False
 
 
 class BalanceResponse(BaseModel):
     credit_balance: int
     free_quota_used_today: int
+    low_balance: bool = False
 
 
 class CheckoutRequest(BaseModel):
