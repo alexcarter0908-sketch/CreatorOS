@@ -116,3 +116,5 @@ apply-*.ps1
 *.livebackup_*
 commandinput_*.tsx
 current-command-input.tsx
+
+*.billing_backup_*
