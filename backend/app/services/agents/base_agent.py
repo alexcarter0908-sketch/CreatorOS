@@ -1,10 +1,12 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from abc import ABC, abstractmethod
 from app.schemas.ai_request import AIRequest
+from app.core.config.settings import settings
 from app.services.agents.prompt_helpers import (
     with_accuracy_instruction,
     with_brand_voice_instruction,
     with_conversation_history,
+    with_identity_instruction,
     with_language_instruction,
     with_location_context,
     with_structured_answer_instruction,
@@ -28,19 +30,13 @@ class BaseAgent(ABC):
         raise NotImplementedError
 
     async def generate(self, request: AIRequest, skip_accuracy_instruction: bool = False) -> dict:
-        # IMPORTANT: use the *original* human message for quote-detection,
-        # not request.prompt - by the time some agents (e.g. ScriptAgent)
-        # call generate(), request.prompt has already been overwritten
-        # with a big system-prompt template that itself contains quoted
-        # English example text (e.g. "exact voiceover line(s) in Roman
-        # Urdu + English mix"). Scanning that template instead of the
-        # real user message caused the whole response to be wrongly
-        # force-switched to English. request.metadata["raw_user_message"]
-        # is set once, before any agent touches request.prompt.
-        raw_user_message = request.metadata.get("raw_user_message") or request.prompt
+        raw_user_message = request.prompt
         quoted_english_phrase = get_quoted_english_phrase(raw_user_message)
 
+        app_name = (settings.APP_NAME or "CreatorOS").replace(" API", "").strip() or "CreatorOS"
+
         prompt = with_conversation_history(request.prompt, request.history)
+        prompt = with_identity_instruction(prompt, app_name)
         prompt = with_language_instruction(prompt)
         prompt = with_location_context(prompt, request.latitude, request.longitude)
         prompt = with_brand_voice_instruction(prompt, request.brand_voice)

@@ -14,11 +14,13 @@ from app.dependencies.auth import get_current_user
 from app.repositories.asset_repository import AssetRepository
 from app.repositories.conversation_repository import ConversationRepository
 from app.schemas.ai_request import AIRequest
+from app.core.config.settings import settings
 from app.services.agents.prompt_helpers import (
     with_accuracy_instruction,
     with_brand_voice_instruction,
     with_conversation_history,
     with_current_date,
+    with_identity_instruction,
     with_language_instruction,
     with_location_context,
     with_structured_answer_instruction,
@@ -613,7 +615,65 @@ async def run_command_stream(
                 )
             full_prompt = with_conversation_history(chat_prompt, history)
             full_prompt = with_language_instruction(full_prompt)
+            full_prompt = with_identity_instruction(
+                full_prompt,
+                (settings.APP_NAME or "CreatorOS").replace(" API", "").strip() or "CreatorOS",
+            )
             full_prompt = with_current_date(full_prompt)
+            full_prompt = (
+                full_prompt
+                + "\n\n[FORMATTING RULE]\n"
+                + "1. Structure every response like a professional writer, not a casual paragraph dump.\n"
+                + "2. Use clear headings (## Heading) to break the response into labeled sections whenever "
+                + "the answer has more than one distinct part (e.g. identity + features + limitations).\n"
+                + "3. Use bullet points or numbered lists for multiple items, steps, or tips.\n"
+                + "4. Highlight important tips, warnings, or key takeaways using a blockquote (> Note: ...).\n"
+                + "5. Keep paragraphs short and scannable - avoid long unbroken text blocks.\n"
+                + "6. Maintain this structure regardless of the language/script used (Roman Urdu, English, or mixed).\n"
+                + "7. Short one-line replies (a greeting, a yes/no, a single fact) do NOT need headings - only "
+                + "use headings when the content genuinely has multiple sections."
+            )
+            full_prompt = (
+                full_prompt
+                + "\n\n[RESPONSE QUALITY RULE]\n"
+                + "1. Answer the user's actual question directly first - do not dodge it with generic questions.\n"
+                + "2. Never repeat a question or point you already made earlier in this conversation - check "
+                + "history first.\n"
+                + "3. Do not give generic/templated content unless you know it matches the user's actual "
+                + "project or request.\n"
+                + "4. NEVER restate the same point under multiple headings - each section must add NEW "
+                + "information only."
+            )
+            full_prompt = (
+                full_prompt
+                + "\n\n[VOCABULARY RULE - ROMAN URDU ONLY]\n"
+                + "If replying in Roman Urdu, avoid formal Hindi vocabulary: never use 'jaankari', 'dwara', "
+                + "'tatha', 'vishesh', 'prastut', 'pramukh', 'samay', 'adhik' - use 'maloomat', 'zariye', "
+                + "'aur', 'khas', 'paish', 'aham', 'waqt', 'zyada' instead. Talk like a professional content "
+                + "creator, not a formal textbook."
+            )
+            full_prompt = (
+                full_prompt
+                + "\n\n[QUESTION UNDERSTANDING RULE]\n"
+                + "Before answering, silently identify what KIND of message this is, and match your "
+                + "response shape to it - do not use the same heavy structure for every message:\n"
+                + "- Identity/features question -> answer using the IDENTITY RULE above.\n"
+                + "- Quick factual question (one fact, a number, a yes/no) -> answer in 1-3 sentences, "
+                + "no headings needed.\n"
+                + "- How-to / step-by-step request -> use a numbered list of concrete steps.\n"
+                + "- Creative request (write a script/caption/idea/post) -> give the actual content "
+                + "directly first, do not lecture about how you will write it before writing it.\n"
+                + "- Vague or ambiguous request -> give your best-guess answer using the most reasonable "
+                + "interpretation, THEN ask at most one specific clarifying question at the end - never "
+                + "reply with only a clarifying question and no attempt at an answer.\n"
+                + "- Follow-up message that references something already said earlier in this "
+                + "conversation -> use that history, do not ask the user to repeat information they "
+                + "already gave, and do not repeat a point/answer you already gave earlier.\n"
+                + "- Casual greeting or small talk -> reply briefly and naturally, no headings, no "
+                + "feature list, no lecture.\n"
+                + "The goal: the response shape should always fit what was actually asked, not follow "
+                + "one fixed template for every message."
+            )
             if request.project_id:
                 from app.repositories.project_repository import ProjectRepository
                 _project = ProjectRepository(db).get_by_id(request.project_id)
@@ -732,3 +792,5 @@ async def run_command_stream(
             "Connection": "keep-alive",
         },
     )
+
+
