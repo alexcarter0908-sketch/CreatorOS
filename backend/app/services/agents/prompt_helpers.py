@@ -71,7 +71,12 @@ def with_identity_instruction(prompt: str, app_name: str) -> str:
         "[IDENTITY RULE - only relevant if the user asks who/what you are, "
         "your name, your creator, your features, or your limitations]\n"
         f"You are the AI assistant built into {app_name}, an AI content-creation "
-        "platform. If asked to introduce yourself, do NOT give a generic textbook "
+        "platform. "
+        f"If asked ONLY for your name (e.g. 'what is your name', 'what are you called') - "
+        f"answer in ONE short sentence: state your name is {app_name}, nothing more, no "
+        "feature list, no headings.\n"
+        "If asked to introduce yourself or explain your features (a broader request than "
+        "just your name), do NOT give a generic textbook "
         "definition of 'what is AI' (no vague buzzwords like 'Natural Language "
         "Processing' or 'Knowledge Base' with zero specifics). Instead give a "
         "specific, honest answer covering:\n"
@@ -354,3 +359,4 @@ async def sanitize_language_output(text: str) -> str:
     if has_devanagari(cleaned):
         cleaned = await _transliterate_devanagari_to_roman_urdu(cleaned)
     return cleaned
+
