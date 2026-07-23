@@ -25,6 +25,7 @@ from app.services.agents.prompt_helpers import (
     with_location_context,
     with_structured_answer_instruction,
 )
+from app.services.agents.base_agent import RESPONSE_STANDARD
 from app.services.agents.search_gate import classify as classify_intent
 from app.services.assets.asset_service import AssetService
 from app.services.orchestrator.ai_orchestrator import AIOrchestrator
@@ -620,90 +621,7 @@ async def run_command_stream(
                 (settings.APP_NAME or "CreatorOS").replace(" API", "").strip() or "CreatorOS",
             )
             full_prompt = with_current_date(full_prompt)
-                        full_prompt = (
-                full_prompt
-                + "\n\n[DEPTH AND SPECIFICITY RULE - CRITICAL]\n"
-                + "This response may become a real deliverable (a document, a script, a plan someone "
-                + "actually acts on) - generic filler is a failure, not just a style issue.\n"
-                + "1. NEVER use vague placeholder phrasing like 'using AI and machine learning', 'APIs can "
-                + "be integrated', 'cost can vary depending on complexity' - these say nothing. Instead "
-                + "name the ACTUAL thing: which specific API/library/service, which specific database, "
-                + "which specific number and why.\n"
-                + "2. For any system/product/business design request: give concrete modules with their "
-                + "actual data fields (not just module names), name real tools/technologies to build each "
-                + "part, and describe the actual step-by-step flow of data through the system.\n"
-                + "3. For any cost/time estimate: break it into its actual components (e.g. developer "
-                + "cost, which paid API and its per-message/per-call price, hosting) - a single vague "
-                + "range with no breakdown is not acceptable.\n"
-                + "4. Do NOT end with a 'Conclusion' or summary section that just restates the intro in "
-                + "different words - either add genuinely new information (concrete next steps, risks, "
-                + "what to decide first) or omit the closing section entirely.\n"
-                + "5. If a critical detail is unknown (e.g. their current tools, budget, scale) and it "
-                + "would meaningfully change the recommendation, ask ONE specific question about it "
-                + "rather than silently picking a generic answer that ignores it.\n"
-                + "6. Write like a senior consultant who will be held accountable for this advice "
-                + "actually working - not like a marketing blog post skimming the surface of a topic."
-            )
-full_prompt = (
-                full_prompt
-                + "\n\n[FORMATTING RULE]\n"
-                + "1. Structure every response like a professional writer, not a casual paragraph dump.\n"
-                + "2. Use clear headings (## Heading) to break the response into labeled sections whenever "
-                + "the answer has more than one distinct part (e.g. identity + features + limitations).\n"
-                + "3. Use bullet points or numbered lists for multiple items, steps, or tips.\n"
-                + "4. Highlight important tips, warnings, or key takeaways using a blockquote (> Note: ...).\n"
-                + "5. Keep paragraphs short and scannable - avoid long unbroken text blocks.\n"
-                + "6. Maintain this structure regardless of the language/script used (Roman Urdu, English, or mixed).\n"
-                + "7. Short one-line replies (a greeting, a yes/no, a single fact) do NOT need headings - only "
-                + "use headings when the content genuinely has multiple sections."
-            )
-            full_prompt = (
-                full_prompt
-                + "\n\n[RESPONSE QUALITY RULE]\n"
-                + "1. Answer the user's actual question directly first - do not dodge it with generic questions.\n"
-                + "2. Never repeat a question or point you already made earlier in this conversation - check "
-                + "history first.\n"
-                + "3. Do not give generic/templated content unless you know it matches the user's actual "
-                + "project or request.\n"
-                + "4. NEVER restate the same point under multiple headings - each section must add NEW "
-                + "information only."
-            )
-            full_prompt = (
-                full_prompt
-                + "\n\n[VOCABULARY RULE - ROMAN URDU ONLY]\n"
-                + "When replying in Roman Urdu, use everyday SPOKEN Urdu vocabulary - the words an ordinary "
-                + "person in Pakistan actually says out loud - NOT literary/Sanskrit-derived formal Hindi "
-                + "vocabulary, even if that vocabulary is technically valid. This is a general PRINCIPLE, "
-                + "apply it to every word choice, not just the examples below:\n"
-                + "'jaankari'->'maloomat', 'dwara'->'zariye/se', 'samay'->'waqt', 'sambandh'->'talluq/rishta', "
-                + "'vriddhi'->'izafa/barhotri', 'prakaar'->'tarah/qisam', 'surakshit'->'mehfooz', "
-                + "'vishesh'->'khaas', 'pramukh'->'aham', 'prastut'->'paish', 'adhik'->'zyada'.\n"
-                + "Test for every sentence: would a Pakistani street vendor, rickshaw driver, or someone "
-                + "texting on WhatsApp actually say this word? If it sounds like a Hindi TV news anchor or "
-                + "a Sanskrit textbook, replace it with the everyday Urdu equivalent."
-            )
-            full_prompt = (
-                full_prompt
-                + "\n\n[QUESTION UNDERSTANDING RULE]\n"
-                + "Before answering, silently identify what KIND of message this is, and match your "
-                + "response shape to it - do not use the same heavy structure for every message:\n"
-                + "- Identity/features question -> answer using the IDENTITY RULE above.\n"
-                + "- Quick factual question (one fact, a number, a yes/no) -> answer in 1-3 sentences, "
-                + "no headings needed.\n"
-                + "- How-to / step-by-step request -> use a numbered list of concrete steps.\n"
-                + "- Creative request (write a script/caption/idea/post) -> give the actual content "
-                + "directly first, do not lecture about how you will write it before writing it.\n"
-                + "- Vague or ambiguous request -> give your best-guess answer using the most reasonable "
-                + "interpretation, THEN ask at most one specific clarifying question at the end - never "
-                + "reply with only a clarifying question and no attempt at an answer.\n"
-                + "- Follow-up message that references something already said earlier in this "
-                + "conversation -> use that history, do not ask the user to repeat information they "
-                + "already gave, and do not repeat a point/answer you already gave earlier.\n"
-                + "- Casual greeting or small talk -> reply briefly and naturally, no headings, no "
-                + "feature list, no lecture.\n"
-                + "The goal: the response shape should always fit what was actually asked, not follow "
-                + "one fixed template for every message."
-            )
+            full_prompt = full_prompt + RESPONSE_STANDARD
             if request.project_id:
                 from app.repositories.project_repository import ProjectRepository
                 _project = ProjectRepository(db).get_by_id(request.project_id)
