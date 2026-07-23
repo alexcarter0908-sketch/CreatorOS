@@ -1,4 +1,4 @@
-﻿import apiClient from "@/lib/api/client";
+import apiClient from "@/lib/api/client";
 import type { Asset, AssetType } from "../types/asset";
 
 export async function listAssets(assetType?: AssetType, limit?: number): Promise<Asset[]> {

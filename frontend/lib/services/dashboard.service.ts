@@ -1,4 +1,4 @@
-﻿ï»¿import apiClient from "@/lib/api/client";
+import apiClient from "@/lib/api/client";
 
 export interface DashboardStats {
   scripts: number;
