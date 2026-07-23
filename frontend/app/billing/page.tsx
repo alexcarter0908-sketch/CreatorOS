@@ -15,8 +15,10 @@ import {
 } from "lucide-react";
 
 import MainLayout from "@/components/layout/MainLayout";
+import BrandWatermark from "@/components/common/BrandWatermark";
 import { Button } from "@/components/ui/button";
 import { apiClient } from "@/lib/api/client";
+import "@/styles/console-theme.css";
 
 interface CreditPack {
   id: string;
@@ -96,6 +98,9 @@ export default function BillingPage() {
 
   return (
     <MainLayout>
+      <div className="console-theme relative isolate -m-8 min-h-[calc(100%+4rem)] overflow-hidden p-8">
+        <BrandWatermark />
+        <div className="relative z-10">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground">Billing</h1>
         <p className="mt-2 text-muted-foreground">Manage your credits and purchase history here.</p>
@@ -215,6 +220,8 @@ export default function BillingPage() {
           </div>
         </div>
       )}
+        </div>
+      </div>
     </MainLayout>
   );
 }

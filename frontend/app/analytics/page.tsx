@@ -15,7 +15,9 @@ import {
 } from "recharts";
 
 import MainLayout from "@/components/layout/MainLayout";
+import BrandWatermark from "@/components/common/BrandWatermark";
 import { useDashboardStats } from "@/lib/hooks/useDashboardStats";
+import "@/styles/console-theme.css";
 
 const COLORS: Record<string, string> = {
   Scripts: "#22c55e", // green-500
@@ -39,6 +41,9 @@ export default function AnalyticsPage() {
 
   return (
     <MainLayout>
+      <div className="console-theme relative isolate -m-8 min-h-[calc(100%+4rem)] overflow-hidden p-8">
+        <BrandWatermark />
+        <div className="relative z-10">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground">Analytics</h1>
         <p className="mt-2 text-muted-foreground">
@@ -130,6 +135,8 @@ export default function AnalyticsPage() {
       {stats.isLoading && (
         <p className="mt-6 text-sm text-muted-foreground">Loading latest data...</p>
       )}
+        </div>
+      </div>
     </MainLayout>
   );
 }

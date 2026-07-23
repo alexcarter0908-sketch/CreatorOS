@@ -5,10 +5,12 @@ import { AlertCircle, CheckCircle2, Clock, Download, FileWarning, Trash2 } from 
 import { toast } from "sonner";
 
 import MainLayout from "@/components/layout/MainLayout";
+import BrandWatermark from "@/components/common/BrandWatermark";
 import { Button } from "@/components/ui/button";
 import { deleteAsset, downloadAsset, listAssets } from "@/features/assets/services/asset.service";
 import type { Asset, AssetType } from "@/features/assets/types/asset";
 import PublishToYouTubeButton from "@/components/publishing/PublishToYouTubeButton";
+import "@/styles/console-theme.css";
 
 const STATUS_CONFIG = {
   pending: { label: "Pending", className: "bg-yellow-100 text-yellow-700", icon: Clock },
@@ -88,21 +90,24 @@ export default function AssetsList({ assetType, title, subtitle }: AssetsListPro
 
   return (
     <MainLayout>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground">{title}</h1>
-        <p className="mt-2 text-muted-foreground">{subtitle}</p>
-      </div>
+      <div className="console-theme relative isolate -m-8 min-h-[calc(100%+4rem)] overflow-hidden p-8">
+        <BrandWatermark />
+        <div className="relative z-10">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-foreground">{title}</h1>
+            <p className="mt-2 text-muted-foreground">{subtitle}</p>
+          </div>
 
-      {isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
-      {error && <p className="text-sm text-red-500">{error}</p>}
+          {isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
+          {error && <p className="text-sm text-red-500">{error}</p>}
 
-      {!isLoading && !error && assets.length === 0 && (
-        <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
-          Nothing generated yet. Use the Command Center to create one.
-        </div>
-      )}
+          {!isLoading && !error && assets.length === 0 && (
+            <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
+              Nothing generated yet. Use the Command Center to create one.
+            </div>
+          )}
 
-      <div className="space-y-3">
+          <div className="space-y-3">
         {assets.map((asset) => {
           const config = STATUS_CONFIG[asset.status] ?? STATUS_CONFIG.pending;
           const StatusIcon = config.icon;
@@ -197,6 +202,8 @@ export default function AssetsList({ assetType, title, subtitle }: AssetsListPro
             </div>
           );
         })}
+          </div>
+        </div>
       </div>
     </MainLayout>
   );

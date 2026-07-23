@@ -23,6 +23,10 @@ from app.api.v1.endpoints import (
     notifications_router,
 )
 from app.core.config.settings import settings
+from app.core.rate_limiter import limiter
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from app.database.init_db import init_database
 from app.services.scheduler import start_scheduler, stop_scheduler
 
@@ -43,6 +47,14 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan,
 )
+
+# Generous rate limiting (120 req/min per IP by default) - protects
+# against scripted abuse without affecting normal human usage. See
+# app/core/rate_limiter.py for the limit and an upgrade note for
+# multi-instance deployments.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -90,3 +102,4 @@ async def health():
         "version": settings.APP_VERSION,
         "ai_system": "CreatorOS",
     }
+

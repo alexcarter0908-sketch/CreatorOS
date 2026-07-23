@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Youtube, Instagram, Facebook, MessageCircle, Twitter, ExternalLink, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiClient } from "../../lib/api/client";
+import BrandWatermark from "@/components/common/BrandWatermark";
+import "@/styles/console-theme.css";
 
 const COMING_SOON_PLATFORMS = [
   { name: "Instagram", icon: Instagram, color: "text-pink-600", bg: "bg-pink-50" },
@@ -52,7 +54,9 @@ export default function ConnectionsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl p-6">
+    <div className="console-theme relative isolate min-h-screen overflow-hidden">
+      <BrandWatermark />
+      <div className="relative z-10 mx-auto max-w-2xl p-6">
       <div className="flex items-center gap-3">
         <button
           onClick={() => router.back()}
@@ -118,6 +122,7 @@ export default function ConnectionsPage() {
           );
         })}
       </div>
+    </div>
     </div>
   );
 }

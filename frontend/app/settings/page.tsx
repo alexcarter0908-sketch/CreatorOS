@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 
 import MainLayout from "@/components/layout/MainLayout";
+import BrandWatermark from "@/components/common/BrandWatermark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,6 +48,7 @@ import {
   markNotificationRead,
 } from "@/features/notifications/services/notifications.service";
 import type { AppNotification } from "@/features/notifications/types/notification.types";
+import "@/styles/console-theme.css";
 
 /* ---------- shared bits ---------- */
 
@@ -369,9 +371,12 @@ export default function SettingsPage() {
   if (!user) {
     return (
       <MainLayout>
-        <div className="space-y-6">
-          <div className="h-24 animate-pulse rounded-2xl bg-muted" />
-          <div className="h-64 animate-pulse rounded-2xl bg-muted" />
+        <div className="console-theme relative isolate -m-8 min-h-[calc(100%+4rem)] overflow-hidden p-8">
+          <BrandWatermark />
+          <div className="relative z-10 space-y-6">
+            <div className="h-24 animate-pulse rounded-2xl bg-muted" />
+            <div className="h-64 animate-pulse rounded-2xl bg-muted" />
+          </div>
         </div>
       </MainLayout>
     );
@@ -427,6 +432,9 @@ export default function SettingsPage() {
 
   return (
     <MainLayout>
+      <div className="console-theme relative isolate -m-8 min-h-[calc(100%+4rem)] overflow-hidden p-8">
+        <BrandWatermark />
+        <div className="relative z-10">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground">Settings</h1>
         <p className="mt-2 text-muted-foreground">
@@ -849,6 +857,8 @@ export default function SettingsPage() {
               </div>
             </SectionCard>
           )}
+        </div>
+        </div>
         </div>
       </div>
     </MainLayout>

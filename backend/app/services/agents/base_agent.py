@@ -47,9 +47,15 @@ class BaseAgent(ABC):
         prompt = (
             prompt
             + "1. Reply naturally in the user's language/script (Roman Urdu stays Roman Urdu).\n"
-            + "2. FOR ROMAN URDU: You MUST avoid formal Hindi vocabulary. \n"
-            + "   - NEVER use: 'jaankari', 'dwara', 'tatha', 'vishesh', 'prastut', 'pramukh', 'samay', 'adhik'.\n"
-            + "   - ALWAYS use: 'maloomat', 'zariye', 'aur', 'khas', 'paish', 'aham', 'waqt', 'zyada'.\n"
+            + "2. FOR ROMAN URDU: use everyday SPOKEN Urdu vocabulary - the words an ordinary person in "
+            + "Pakistan actually says out loud - NOT literary/Sanskrit-derived formal Hindi vocabulary, even "
+            + "if technically valid. This is a general PRINCIPLE, apply it to every word choice:\n"
+            + "'jaankari'->'maloomat', 'dwara'->'zariye/se', 'samay'->'waqt', 'sambandh'->'talluq/rishta', "
+            + "'vriddhi'->'izafa/barhotri', 'prakaar'->'tarah/qisam', 'surakshit'->'mehfooz', "
+            + "'vishesh'->'khaas', 'pramukh'->'aham', 'prastut'->'paish', 'adhik'->'zyada'.\n"
+            + "Test for every sentence: would a Pakistani street vendor or someone texting on WhatsApp "
+            + "actually say this word? If it sounds like a Hindi TV news anchor or a Sanskrit textbook, "
+            + "replace it with the everyday Urdu equivalent.\n"
             + "3. Talk like a professional content creator, not a formal textbook.\n"
             + "4. If search results are provided, give a direct answer, not just links."
         )
@@ -112,3 +118,4 @@ class BaseAgent(ABC):
             return True
         except Exception:
             return False
+

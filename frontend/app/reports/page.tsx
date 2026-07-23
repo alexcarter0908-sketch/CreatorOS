@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
+import BrandWatermark from "@/components/common/BrandWatermark";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import apiClient from "@/lib/api/client";
 import { Loader2, FileBarChart } from "lucide-react";
+import "@/styles/console-theme.css";
 
 interface BreakdownItem {
   asset_type: string;
@@ -37,6 +39,9 @@ export default function ReportsPage() {
 
   return (
     <MainLayout>
+      <div className="console-theme relative isolate -m-8 min-h-[calc(100%+4rem)] overflow-hidden p-8">
+        <BrandWatermark />
+        <div className="relative z-10">
       <DashboardHeader title="Usage Reports" subtitle="Your monthly activity, generated automatically" />
 
       {loading ? (
@@ -91,6 +96,8 @@ export default function ReportsPage() {
           ))}
         </div>
       )}
+        </div>
+      </div>
     </MainLayout>
   );
 }

@@ -647,10 +647,16 @@ async def run_command_stream(
             full_prompt = (
                 full_prompt
                 + "\n\n[VOCABULARY RULE - ROMAN URDU ONLY]\n"
-                + "If replying in Roman Urdu, avoid formal Hindi vocabulary: never use 'jaankari', 'dwara', "
-                + "'tatha', 'vishesh', 'prastut', 'pramukh', 'samay', 'adhik' - use 'maloomat', 'zariye', "
-                + "'aur', 'khas', 'paish', 'aham', 'waqt', 'zyada' instead. Talk like a professional content "
-                + "creator, not a formal textbook."
+                + "When replying in Roman Urdu, use everyday SPOKEN Urdu vocabulary - the words an ordinary "
+                + "person in Pakistan actually says out loud - NOT literary/Sanskrit-derived formal Hindi "
+                + "vocabulary, even if that vocabulary is technically valid. This is a general PRINCIPLE, "
+                + "apply it to every word choice, not just the examples below:\n"
+                + "'jaankari'->'maloomat', 'dwara'->'zariye/se', 'samay'->'waqt', 'sambandh'->'talluq/rishta', "
+                + "'vriddhi'->'izafa/barhotri', 'prakaar'->'tarah/qisam', 'surakshit'->'mehfooz', "
+                + "'vishesh'->'khaas', 'pramukh'->'aham', 'prastut'->'paish', 'adhik'->'zyada'.\n"
+                + "Test for every sentence: would a Pakistani street vendor, rickshaw driver, or someone "
+                + "texting on WhatsApp actually say this word? If it sounds like a Hindi TV news anchor or "
+                + "a Sanskrit textbook, replace it with the everyday Urdu equivalent."
             )
             full_prompt = (
                 full_prompt
@@ -792,5 +798,6 @@ async def run_command_stream(
             "Connection": "keep-alive",
         },
     )
+
 
 
