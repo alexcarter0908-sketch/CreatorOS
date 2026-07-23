@@ -69,7 +69,31 @@ class BaseAgent(ABC):
             + "5. If the user already told you relevant context (project name, stack, files available), use it - do not ask for it again.\n"
             + "6. NEVER restate the same point, question, or request under multiple headings (e.g. do not ask for the same info in a 'Data Collection' section and then again in 'Next Steps' and again in 'Conclusion'). Each section must add NEW information only. If you have one clarifying question, ask it ONCE near the top, then stop - do not pad the response with a summary section that just repeats it."
         )
-        prompt = (
+                prompt = (
+            prompt
+            + "\n\n[DEPTH AND SPECIFICITY RULE - CRITICAL]\n"
+            + "This response may become a real deliverable (a document, a script, a plan someone actually "
+            + "acts on) - generic filler is a failure, not just a style issue.\n"
+            + "1. NEVER use vague placeholder phrasing like 'using AI and machine learning', 'APIs can be "
+            + "integrated', 'cost can vary depending on complexity' - these say nothing. Instead name the "
+            + "ACTUAL thing: which specific API/library/service, which specific database, which specific "
+            + "number and why.\n"
+            + "2. For any system/product/business design request: give concrete modules with their actual "
+            + "data fields (not just module names), name real tools/technologies to build each part, and "
+            + "describe the actual step-by-step flow of data through the system.\n"
+            + "3. For any cost/time estimate: break it into its actual components (e.g. developer cost, "
+            + "which paid API and its per-message/per-call price, hosting) - a single vague range with no "
+            + "breakdown is not acceptable.\n"
+            + "4. Do NOT end with a 'Conclusion' or summary section that just restates the intro in "
+            + "different words - either add genuinely new information (concrete next steps, risks, what "
+            + "to decide first) or omit the closing section entirely.\n"
+            + "5. If a critical detail is unknown (e.g. their current tools, budget, scale) and it would "
+            + "meaningfully change the recommendation, ask ONE specific question about it rather than "
+            + "silently picking a generic answer that ignores it.\n"
+            + "6. Write like a senior consultant who will be held accountable for this advice actually "
+            + "working - not like a marketing blog post skimming the surface of a topic."
+        )
+prompt = (
             prompt
             + "\n\n[FORMATTING RULE]\n"
             + "1. Structure every response like a professional writer, not a casual paragraph dump.\n"
@@ -118,4 +142,5 @@ class BaseAgent(ABC):
             return True
         except Exception:
             return False
+
 

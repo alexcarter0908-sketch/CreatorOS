@@ -620,7 +620,31 @@ async def run_command_stream(
                 (settings.APP_NAME or "CreatorOS").replace(" API", "").strip() or "CreatorOS",
             )
             full_prompt = with_current_date(full_prompt)
-            full_prompt = (
+                        full_prompt = (
+                full_prompt
+                + "\n\n[DEPTH AND SPECIFICITY RULE - CRITICAL]\n"
+                + "This response may become a real deliverable (a document, a script, a plan someone "
+                + "actually acts on) - generic filler is a failure, not just a style issue.\n"
+                + "1. NEVER use vague placeholder phrasing like 'using AI and machine learning', 'APIs can "
+                + "be integrated', 'cost can vary depending on complexity' - these say nothing. Instead "
+                + "name the ACTUAL thing: which specific API/library/service, which specific database, "
+                + "which specific number and why.\n"
+                + "2. For any system/product/business design request: give concrete modules with their "
+                + "actual data fields (not just module names), name real tools/technologies to build each "
+                + "part, and describe the actual step-by-step flow of data through the system.\n"
+                + "3. For any cost/time estimate: break it into its actual components (e.g. developer "
+                + "cost, which paid API and its per-message/per-call price, hosting) - a single vague "
+                + "range with no breakdown is not acceptable.\n"
+                + "4. Do NOT end with a 'Conclusion' or summary section that just restates the intro in "
+                + "different words - either add genuinely new information (concrete next steps, risks, "
+                + "what to decide first) or omit the closing section entirely.\n"
+                + "5. If a critical detail is unknown (e.g. their current tools, budget, scale) and it "
+                + "would meaningfully change the recommendation, ask ONE specific question about it "
+                + "rather than silently picking a generic answer that ignores it.\n"
+                + "6. Write like a senior consultant who will be held accountable for this advice "
+                + "actually working - not like a marketing blog post skimming the surface of a topic."
+            )
+full_prompt = (
                 full_prompt
                 + "\n\n[FORMATTING RULE]\n"
                 + "1. Structure every response like a professional writer, not a casual paragraph dump.\n"
@@ -798,6 +822,7 @@ async def run_command_stream(
             "Connection": "keep-alive",
         },
     )
+
 
 
 

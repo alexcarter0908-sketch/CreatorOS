@@ -1,12 +1,22 @@
-"use client";
+﻿"use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { listProjects } from "@/features/projects/services/project.service";
-import { getAssetActivity, getDashboardStats } from "@/lib/services/dashboard.service";
+import { listAssets } from "@/features/assets/services/asset.service";
+import { getDashboardStats } from "@/lib/services/dashboard.service";
+import type { Asset } from "@/features/assets/types/asset";
 
 export interface DailyActivityPoint {
   date: string; // e.g. "Jul 10"
   count: number;
+}
+
+export interface DailyTypeBreakdownPoint {
+  date: string;
+  scripts: number;
+  videos: number;
+  images: number;
+  audio: number;
 }
 
 export interface ContentMixSlice {
@@ -22,40 +32,77 @@ export interface DashboardData {
   audio: number;
   credits: number;
   isLoading: boolean;
-  // Real counts of items created in the last 7 days, computed server-side
-  // from the user's full history (not capped to a page of recent items).
-  // Undefined while loading.
+  // Real counts of items created in the last 7 days, computed from actual
+  // created_at timestamps - not fabricated. Undefined while loading.
   projectsThisWeek?: number;
   scriptsThisWeek?: number;
   videosThisWeek?: number;
   imagesThisWeek?: number;
   audioThisWeek?: number;
-  // Chart data - both come from lightweight, purpose-built aggregate
-  // endpoints, not a full asset list fetched just to compute this client-side.
+  // Chart data - all derived from the same real asset/project lists above,
+  // no separate fetch and no fabricated values.
   dailyActivity: DailyActivityPoint[];
+  dailyActivityByType: DailyTypeBreakdownPoint[];
   contentMix: ContentMixSlice[];
-  // For fix #5: lets the dashboard show "Updated Xm ago" and offer a
-  // manual refresh without a full page reload.
-  lastUpdated: Date | null;
-  refresh: () => void;
+  // Last-7-day per-category counts, for the small sparkline on each stat
+  // card. Same source data as everything else above.
+  projectsSparkline: number[];
+  scriptsSparkline: number[];
+  videosSparkline: number[];
+  imagesSparkline: number[];
+  audioSparkline: number[];
 }
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const ACTIVITY_WINDOW_DAYS = 14;
+const SPARKLINE_WINDOW_DAYS = 7;
 
 function countSince(items: { created_at: string }[], sinceMs: number): number {
   return items.filter((item) => new Date(item.created_at).getTime() >= sinceMs).length;
 }
 
-function formatShortDate(isoDate: string): string {
-  // isoDate is "YYYY-MM-DD" from the backend. Append a time so this
-  // parses as local midnight rather than UTC midnight, which can shift
-  // the displayed day by one depending on the viewer's timezone.
-  const d = new Date(`${isoDate}T00:00:00`);
-  return d.toLocaleDateString([], { month: "short", day: "numeric" });
+function dayKeys(windowDays: number): { key: string; label: string }[] {
+  const days: { key: string; label: string }[] = [];
+  const now = new Date();
+  for (let i = windowDays - 1; i >= 0; i--) {
+    const day = new Date(now.getTime() - i * DAY_MS);
+    days.push({
+      key: day.toDateString(),
+      label: day.toLocaleDateString([], { month: "short", day: "numeric" }),
+    });
+  }
+  return days;
+}
+
+function buildDailyActivity(items: { created_at: string }[]): DailyActivityPoint[] {
+  return dayKeys(ACTIVITY_WINDOW_DAYS).map(({ key, label }) => ({
+    date: label,
+    count: items.filter((item) => new Date(item.created_at).toDateString() === key).length,
+  }));
+}
+
+function buildDailyActivityByType(assets: Asset[]): DailyTypeBreakdownPoint[] {
+  return dayKeys(ACTIVITY_WINDOW_DAYS).map(({ key, label }) => {
+    const sameDay = assets.filter((a) => new Date(a.created_at).toDateString() === key);
+    return {
+      date: label,
+      scripts: sameDay.filter((a) => a.asset_type === "text").length,
+      videos: sameDay.filter((a) => a.asset_type === "video").length,
+      images: sameDay.filter((a) => a.asset_type === "image").length,
+      audio: sameDay.filter((a) => a.asset_type === "audio").length,
+    };
+  });
+}
+
+function buildSparkline(items: { created_at: string }[]): number[] {
+  return dayKeys(SPARKLINE_WINDOW_DAYS).map(
+    ({ key }) => items.filter((item) => new Date(item.created_at).toDateString() === key).length
+  );
 }
 
 export function useDashboardStats(): DashboardData {
-  const [data, setData] = useState<Omit<DashboardData, "refresh">>({
+  const [data, setData] = useState<DashboardData>({
     projects: 0,
     scripts: 0,
     videos: 0,
@@ -64,26 +111,33 @@ export function useDashboardStats(): DashboardData {
     credits: 0,
     isLoading: true,
     dailyActivity: [],
+    dailyActivityByType: [],
     contentMix: [],
-    lastUpdated: null,
+    projectsSparkline: [],
+    scriptsSparkline: [],
+    videosSparkline: [],
+    imagesSparkline: [],
+    audioSparkline: [],
   });
-  const [reloadToken, setReloadToken] = useState(0);
-
-  const refresh = useCallback(() => setReloadToken((t) => t + 1), []);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
-      const [projects, stats, activity] = await Promise.all([
+      const [projects, stats, assets] = await Promise.all([
         listProjects().catch(() => []),
         getDashboardStats(),
-        getAssetActivity(14),
+        listAssets().catch(() => []),
       ]);
 
       if (cancelled) return;
 
       const since = Date.now() - WEEK_MS;
+
+      const scriptAssets = assets.filter((a) => a.asset_type === "text");
+      const videoAssets = assets.filter((a) => a.asset_type === "video");
+      const imageAssets = assets.filter((a) => a.asset_type === "image");
+      const audioAssets = assets.filter((a) => a.asset_type === "audio");
 
       const contentMix: ContentMixSlice[] = [
         { name: "Scripts", value: stats.scripts },
@@ -101,16 +155,18 @@ export function useDashboardStats(): DashboardData {
         credits: stats.credits,
         isLoading: false,
         projectsThisWeek: countSince(projects, since),
-        scriptsThisWeek: activity.weekly.scripts,
-        videosThisWeek: activity.weekly.videos,
-        imagesThisWeek: activity.weekly.images,
-        audioThisWeek: activity.weekly.audio,
-        dailyActivity: activity.daily_activity.map((point) => ({
-          date: formatShortDate(point.date),
-          count: point.count,
-        })),
+        scriptsThisWeek: countSince(scriptAssets, since),
+        videosThisWeek: countSince(videoAssets, since),
+        imagesThisWeek: countSince(imageAssets, since),
+        audioThisWeek: countSince(audioAssets, since),
+        dailyActivity: buildDailyActivity(assets),
+        dailyActivityByType: buildDailyActivityByType(assets),
         contentMix,
-        lastUpdated: new Date(),
+        projectsSparkline: buildSparkline(projects),
+        scriptsSparkline: buildSparkline(scriptAssets),
+        videosSparkline: buildSparkline(videoAssets),
+        imagesSparkline: buildSparkline(imageAssets),
+        audioSparkline: buildSparkline(audioAssets),
       });
     }
 
@@ -118,7 +174,7 @@ export function useDashboardStats(): DashboardData {
     return () => {
       cancelled = true;
     };
-  }, [reloadToken]);
+  }, []);
 
-  return { ...data, refresh };
+  return data;
 }
