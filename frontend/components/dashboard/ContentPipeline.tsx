@@ -1,4 +1,4 @@
-﻿"use client";
+﻿ï»¿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -22,15 +22,15 @@ function stepLabel(step: WorkflowStepApi): string {
 
 function StepStatus({ status }: { status: WorkflowStepApi["status"] }) {
   if (status === "completed") {
-    return <span className="text-xs font-console-mono text-emerald-400">● Complete</span>;
+    return <span className="text-xs font-console-mono text-emerald-400">â— Complete</span>;
   }
   if (status === "running") {
-    return <span className="text-xs font-console-mono text-primary">◐ Running</span>;
+    return <span className="text-xs font-console-mono text-primary">â— Running</span>;
   }
   if (status === "failed") {
-    return <span className="text-xs font-console-mono text-red-400">✕ Failed</span>;
+    return <span className="text-xs font-console-mono text-red-400">âœ• Failed</span>;
   }
-  return <span className="text-xs font-console-mono text-muted-foreground">○ Pending</span>;
+  return <span className="text-xs font-console-mono text-muted-foreground">â—‹ Pending</span>;
 }
 
 export default function ContentPipeline() {
@@ -39,24 +39,39 @@ export default function ContentPipeline() {
 
   useEffect(() => {
     let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
-    listWorkflowsApi()
-      .then((workflows) => {
+    async function poll() {
+      try {
+        const workflows = await listWorkflowsApi();
         if (cancelled) return;
+
         const active = workflows.find(
           (w) => w.status === "running" || w.status === "completed_with_errors"
         );
-        setWorkflow(active ?? workflows[0] ?? null);
-      })
-      .catch(() => {
-        if (!cancelled) setWorkflow(null);
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
+        const current = active ?? workflows[0] ?? null;
+        setWorkflow(current);
+        setIsLoading(false);
+
+        // Keep polling only while something is actively running, so the
+        // step statuses update live without a manual page reload - and
+        // stop automatically once it finishes (or this section unmounts).
+        if (current?.status === "running" && !cancelled) {
+          timeoutId = setTimeout(poll, 5000);
+        }
+      } catch {
+        if (!cancelled) {
+          setWorkflow(null);
+          setIsLoading(false);
+        }
+      }
+    }
+
+    poll();
 
     return () => {
       cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
     };
   }, []);
 
@@ -68,7 +83,7 @@ export default function ContentPipeline() {
         <h2 className="font-console-display text-xl font-semibold tracking-tight text-foreground">
           Content Pipeline
           {workflow && (
-            <span className="ml-2 font-normal text-muted-foreground">— {workflow.name}</span>
+            <span className="ml-2 font-normal text-muted-foreground">â€” {workflow.name}</span>
           )}
         </h2>
         {workflow && remaining > 0 && (
@@ -86,7 +101,7 @@ export default function ContentPipeline() {
         <div className="mx-7 mb-7 rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
           No active workflow yet.{" "}
           <Link href="/command-center" className="text-primary hover:underline">
-            Start one in Command Center →
+            Start one in Command Center â†’
           </Link>
         </div>
       )}

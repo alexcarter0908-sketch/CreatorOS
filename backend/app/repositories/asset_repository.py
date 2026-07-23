@@ -1,5 +1,8 @@
-﻿from __future__ import annotations
+﻿ï»¿from __future__ import annotations
 
+from datetime import date, datetime, timedelta, timezone
+
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database.models import Asset
@@ -82,6 +85,57 @@ class AssetRepository:
             .order_by(Asset.created_at.desc())
             .all()
         )
+
+    # ---------------- Aggregate stats ----------------
+    # These use SQL GROUP BY / COUNT so the database does the counting -
+    # they never load every asset row into Python memory, and they see
+    # the user's *entire* history rather than whatever page size a list
+    # endpoint happens to return.
+
+    def count_by_type(self, owner_id: str) -> dict[str, int]:
+        rows = (
+            self.db.query(Asset.asset_type, func.count(Asset.id))
+            .filter(Asset.owner_id == owner_id)
+            .group_by(Asset.asset_type)
+            .all()
+        )
+        return {asset_type: count for asset_type, count in rows}
+
+    def count_since_by_type(self, owner_id: str, since: datetime) -> dict[str, int]:
+        rows = (
+            self.db.query(Asset.asset_type, func.count(Asset.id))
+            .filter(Asset.owner_id == owner_id, Asset.created_at >= since)
+            .group_by(Asset.asset_type)
+            .all()
+        )
+        return {asset_type: count for asset_type, count in rows}
+
+    def daily_counts(self, owner_id: str, days: int) -> dict[date, int]:
+        """Per-day asset counts for the last `days` days (including today),
+        as a single grouped query - the result set is at most `days` rows,
+        never the full asset list."""
+        since = datetime.now(timezone.utc) - timedelta(days=days - 1)
+        rows = (
+            self.db.query(
+                func.date(Asset.created_at).label("day"),
+                func.count(Asset.id),
+            )
+            .filter(Asset.owner_id == owner_id, Asset.created_at >= since)
+            .group_by("day")
+            .all()
+        )
+
+        # Different DB drivers hand back func.date(...) as either a date
+        # object (Postgres/psycopg) or a plain string (e.g. SQLite in
+        # tests) - normalize to date so callers can key-lookup reliably
+        # regardless of backend.
+        normalized: dict[date, int] = {}
+        for day, count in rows:
+            if isinstance(day, str):
+                day = datetime.strptime(day, "%Y-%m-%d").date()
+            normalized[day] = count
+
+        return normalized
 
     # ---------------- Update lifecycle ----------------
 

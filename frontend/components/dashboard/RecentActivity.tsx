@@ -1,4 +1,4 @@
-﻿"use client";
+﻿ï»¿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -7,13 +7,13 @@ import { listAssets } from "@/features/assets/services/asset.service";
 import type { Asset } from "@/features/assets/types/asset";
 
 const TYPE_ICON: Record<string, string> = {
-  video: "🎬",
-  image: "🖼️",
-  audio: "🎙️",
-  text: "📝",
-  script: "📝",
-  document: "📄",
-  seo: "🔍",
+  video: "ðŸŽ¬",
+  image: "ðŸ–¼ï¸",
+  audio: "ðŸŽ™ï¸",
+  text: "ðŸ“",
+  script: "ðŸ“",
+  document: "ðŸ“„",
+  seo: "ðŸ”",
 };
 
 const STATUS_VERB: Record<string, string> = {
@@ -34,10 +34,10 @@ function relativeTime(iso: string): string {
 }
 
 function describeAsset(asset: Asset): string {
-  const icon = TYPE_ICON[asset.asset_type] ?? "✨";
+  const icon = TYPE_ICON[asset.asset_type] ?? "âœ¨";
   const verb = STATUS_VERB[asset.status] ?? asset.status;
   const label = asset.asset_type === "text" ? "Script" : asset.asset_type;
-  const title = asset.prompt ? `— ${asset.prompt.slice(0, 40)}${asset.prompt.length > 40 ? "…" : ""}` : "";
+  const title = asset.prompt ? `â€” ${asset.prompt.slice(0, 40)}${asset.prompt.length > 40 ? "â€¦" : ""}` : "";
   return `${icon} ${label.charAt(0).toUpperCase() + label.slice(1)} ${verb} ${title}`;
 }
 
@@ -48,9 +48,9 @@ export default function RecentActivity() {
   useEffect(() => {
     let cancelled = false;
 
-    listAssets()
+    listAssets(undefined, 5)
       .then((data) => {
-        if (!cancelled) setAssets(data.slice(0, 5));
+        if (!cancelled) setAssets(data);
       })
       .catch(() => {
         if (!cancelled) setAssets([]);

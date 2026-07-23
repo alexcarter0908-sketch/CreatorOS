@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+﻿ï»¿from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -9,10 +11,13 @@ from app.dependencies.auth import get_current_user
 from app.repositories.asset_repository import AssetRepository
 from app.schemas.ai_request import AIRequest
 from app.schemas.asset import (
+    AssetActivityResponse,
     AssetResponse,
     AssetRetryRequest,
     AssetStatsResponse,
     AssetTextUpdateRequest,
+    DailyActivityPoint,
+    WeeklyCounts,
 )
 from app.services.billing import credit_service
 from app.services.storage import get_storage
@@ -46,18 +51,57 @@ def get_asset_stats(
     db: Session = Depends(get_db),
 ):
     repo = AssetRepository(db)
-    assets = repo.list_by_owner(current_user.id, limit=10000, offset=0)
+    counts = repo.count_by_type(current_user.id)
 
     from app.database.models.billing import BillingAccount
     account = db.query(BillingAccount).filter(BillingAccount.user_id == current_user.id).first()
     credit_balance = account.credit_balance if account else 0
 
     return AssetStatsResponse(
-        scripts=sum(1 for a in assets if a.asset_type == "text"),
-        videos=sum(1 for a in assets if a.asset_type == "video"),
-        images=sum(1 for a in assets if a.asset_type == "image"),
-        audio=sum(1 for a in assets if a.asset_type == "audio"),
+        scripts=counts.get("text", 0),
+        videos=counts.get("video", 0),
+        images=counts.get("image", 0),
+        audio=counts.get("audio", 0),
         credits=credit_balance,
+    )
+
+
+@router.get("/activity", response_model=AssetActivityResponse)
+def get_asset_activity(
+    days: int = 14,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Powers the dashboard's "this week" trend numbers and daily activity
+    chart. Both are computed with SQL aggregation over the user's full
+    asset history, not derived from a capped list() response - so the
+    numbers stay accurate no matter how many assets the user has.
+    """
+    repo = AssetRepository(db)
+
+    since_week = datetime.now(timezone.utc) - timedelta(days=7)
+    weekly_counts = repo.count_since_by_type(current_user.id, since_week)
+
+    days = max(1, min(days, 90))
+    daily_counts = repo.daily_counts(current_user.id, days)
+
+    daily_activity: list[DailyActivityPoint] = []
+    today = datetime.now(timezone.utc).date()
+    for i in range(days - 1, -1, -1):
+        day = today - timedelta(days=i)
+        daily_activity.append(
+            DailyActivityPoint(date=day.isoformat(), count=daily_counts.get(day, 0))
+        )
+
+    return AssetActivityResponse(
+        weekly=WeeklyCounts(
+            scripts=weekly_counts.get("text", 0),
+            videos=weekly_counts.get("video", 0),
+            images=weekly_counts.get("image", 0),
+            audio=weekly_counts.get("audio", 0),
+        ),
+        daily_activity=daily_activity,
     )
 
 

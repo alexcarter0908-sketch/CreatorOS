@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+﻿ï»¿from __future__ import annotations
 
 from datetime import datetime
 
@@ -37,3 +37,20 @@ class AssetStatsResponse(BaseModel):
     images: int
     audio: int
     credits: int
+
+
+class WeeklyCounts(BaseModel):
+    scripts: int
+    videos: int
+    images: int
+    audio: int
+
+
+class DailyActivityPoint(BaseModel):
+    date: str  # ISO date, e.g. "2026-07-10"
+    count: int
+
+
+class AssetActivityResponse(BaseModel):
+    weekly: WeeklyCounts
+    daily_activity: list[DailyActivityPoint]

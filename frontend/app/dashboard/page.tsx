@@ -1,4 +1,4 @@
-﻿"use client";
+﻿ï»¿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -25,9 +25,21 @@ import {
   AudioLines,
   Search,
   ArrowRight,
+  RefreshCw,
 } from "lucide-react";
 
 import "@/styles/console-theme.css";
+
+function formatRelativeTime(date: Date | null): string {
+  if (!date) return "";
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (seconds < 10) return "Updated just now";
+  if (seconds < 60) return `Updated ${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `Updated ${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return `Updated ${hours}h ago`;
+}
 
 export default function DashboardPage() {
   const stats = useDashboardStats();
@@ -56,10 +68,20 @@ export default function DashboardPage() {
             </p>
           </div>
           {now ? (
-            <span className="font-console-mono rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground">
-              {now.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" }).toUpperCase()}{" "}
-              <span className="text-primary">{now.toLocaleTimeString()}</span>
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="font-console-mono rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground">
+                {now.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" }).toUpperCase()}{" "}
+                <span className="text-primary">{now.toLocaleTimeString()}</span>
+              </span>
+              <button
+                onClick={stats.refresh}
+                title="Refresh dashboard data"
+                className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${stats.isLoading ? "animate-spin" : ""}`} />
+                {stats.lastUpdated ? formatRelativeTime(stats.lastUpdated) : "Refresh"}
+              </button>
+            </div>
           ) : null}
         </div>
 

@@ -1,9 +1,12 @@
-import apiClient from "@/lib/api/client";
+﻿import apiClient from "@/lib/api/client";
 import type { Asset, AssetType } from "../types/asset";
 
-export async function listAssets(assetType?: AssetType): Promise<Asset[]> {
+export async function listAssets(assetType?: AssetType, limit?: number): Promise<Asset[]> {
   const { data } = await apiClient.get<Asset[]>("/api/v1/assets", {
-    params: assetType ? { asset_type: assetType } : undefined,
+    params: {
+      ...(assetType ? { asset_type: assetType } : {}),
+      ...(limit ? { limit } : {}),
+    },
   });
   return data;
 }
