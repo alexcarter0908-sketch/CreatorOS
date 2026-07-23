@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
 import json
@@ -716,7 +716,7 @@ async def run_command_stream(
             try:
                 groq = GroqProvider()
                 async for delta in groq.stream_chat(
-                    model="llama-3.3-70b-versatile",
+                    model="openai/gpt-oss-120b",  # stronger free Groq model - llama-3.3-70b-versatile is deprecated
                     prompt=full_prompt,
                 ):
                     collected += delta
