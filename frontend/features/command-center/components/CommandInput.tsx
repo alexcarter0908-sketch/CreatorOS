@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import PublishToYouTubeButton from "@/components/publishing/PublishToYouTubeButton";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import axios from "axios";
 import {
   Send,
   Plus,
@@ -24,29 +22,19 @@ import {
   Square,
   Link2,
   Download,
-  FileCode2,
-  RefreshCw,
-  Star,
-  Layers,
-  Wand2,
-  CreditCard,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import BrandWatermark from "@/components/common/BrandWatermark";
 import apiClient from "@/lib/api/client";
-import { useAuthStore } from "@/features/auth/store/auth.store";
 import { useCommandStore } from "../store/command.store";
-import { runCommand, runCommandStream } from "../services/command.service";
+import { runCommand } from "../services/command.service";
 import { fetchConversation } from "../services/conversation.service";
 import { getStoredConversationId } from "../services/command.service";
 import { getAsset } from "@/features/assets/services/asset.service";
-import type { ChatMessage, ChatAttachment, AttachmentKind, ChatSource } from "../types/command";
+import type { ChatMessage, ChatAttachment, AttachmentKind } from "../types/command";
 import type { AICommandHistoryTurn } from "@/lib/ai/gateway";
 import { clearStoredConversationId } from "../services/command.service";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 
 const MIN_TEXTAREA_HEIGHT = 44;
 const MAX_TEXTAREA_HEIGHT = 200;
@@ -54,36 +42,8 @@ const PASTE_LINE_THRESHOLD = 500;
 const COLLAPSE_LENGTH = 500;
 const COLLAPSE_LINES = 500;
 const WAVE_BAR_COUNT = 28;
-const TEMPLATES_STORAGE_KEY = "creatoros_prompt_templates";
-const PROVIDER_STATUS_STORAGE_KEY = "creatoros_provider_status";
-
-// NOTE: word order matters here - the backend's actual message is
-// "No provider available for asset type '...'" (provider comes before
-// available). Getting this backwards means the pattern never matches
-// and the upgrade prompt never shows.
-const NEEDS_UPGRADE_PATTERN = /no provider available|insufficient credits|configure api key/i;
-
-// Never show raw backend/provider error text (e.g. "PixVerse request
-// failed (400): {...}") to the user - it exposes internal system
-// faults. Always translate to a calm, friendly line instead.
-function getDisplayErrorMessage(raw: string | null | undefined): string {
-  if (raw && NEEDS_UPGRADE_PATTERN.test(raw)) {
-    return "This generation needs more credits or a plan upgrade to continue.";
-  }
-  return "Something went wrong on our end. Please try again in a moment.";
-}
-
-// Asset types that get the dedicated "artifact card" treatment instead
-// of being rendered as a plain chat bubble - these are generated
-// deliverables (a script, an SEO package, a document) the user is meant
-// to copy/download and reuse, not read as a conversational reply.
-const CARD_ASSET_TYPES = new Set(["script", "document", "seo"]);
 
 function extractErrorMessage(error: unknown): string {
-  if (axios.isAxiosError(error)) {
-    const detail = error.response?.data?.detail;
-    if (typeof detail === "string" && detail) return detail;
-  }
   if (error instanceof Error) return error.message;
   return "Something went wrong.";
 }
@@ -91,7 +51,7 @@ function extractErrorMessage(error: unknown): string {
 function buildHistory(messages: ChatMessage[]): AICommandHistoryTurn[] {
   return messages
     .filter((m) => m.status === "completed" && m.content.trim().length > 0)
-    .slice(-20)
+    .slice(-6)
     .map((m) => ({ role: m.role, content: m.content }));
 }
 
@@ -102,103 +62,11 @@ function getAttachmentKind(file: File): AttachmentKind {
   return "document";
 }
 
-// Mirrors the backend's detect_asset_type keyword logic (see
-// backend/app/api/v1/endpoints/commands.py) so we can show a
-// meaningful "Researching...", "Writing script...", etc. label the
-// instant the user hits send, instead of a generic "Generating..."
-// that gives no idea what's actually happening.
-const PENDING_STATUS_LABELS: Record<string, string> = {
-  research: "Researching...",
-  script: "Writing script...",
-  document: "Preparing document...",
-  seo: "Writing SEO...",
-  text: "Writing...",
-  image: "Generating image...",
-  video: "Generating video...",
-  audio: "Generating audio...",
-};
-
-function guessPendingLabel(command: string): string {
-  const c = command.toLowerCase();
-  const researchWords = ["research", "trends", "trending", "latest news", "what's happening", "current state of", "market analysis"];
-  if (researchWords.some((w) => c.includes(w))) return PENDING_STATUS_LABELS.research;
-  if (c.includes("script")) return PENDING_STATUS_LABELS.script;
-  const documentWords = ["word document", "docx", "pdf", "downloadable document", "download document", "proposal document"];
-  if (documentWords.some((w) => c.includes(w))) return PENDING_STATUS_LABELS.document;
-  const seoWords = ["seo", "meta description", "meta title", "keyword research"];
-  if (seoWords.some((w) => c.includes(w))) return PENDING_STATUS_LABELS.seo;
-  const imageWords = ["thumbnail", "image", "logo", "poster", "banner", "photo", "picture"];
-  if (imageWords.some((w) => c.includes(w))) return PENDING_STATUS_LABELS.image;
-  const videoWords = ["video", "reel", "animation"];
-  if (videoWords.some((w) => c.includes(w))) return PENDING_STATUS_LABELS.video;
-  const audioWords = ["voice", "speech", "audio", "tts", "text to speech"];
-  if (audioWords.some((w) => c.includes(w))) return PENDING_STATUS_LABELS.audio;
-  const textWords = ["caption", "blog", "article", "post", "description", "title", "hashtag"];
-  if (textWords.some((w) => c.includes(w))) return PENDING_STATUS_LABELS.text;
-  return "Generating...";
-}
-
-// Mirrors backend's _wants_full_pipeline (commands.py): a "video ...
-// for my YouTube channel" style command triggers the multi-step
-// script -> thumbnail -> video -> SEO pipeline, which ONLY the
-// buffered /commands/run endpoint knows how to create (it returns a
-// workflow_id). The streaming endpoint has no pipeline branch, so
-// these requests must keep going through the existing buffered path
-// untouched - only non-pipeline requests get the new streaming path.
-function wantsFullPipeline(command: string): boolean {
-  const lowered = command.toLowerCase();
-  const hasVideo = lowered.includes("video");
-  const hasPublishIntent = ["youtube", "channel", "publish", "upload"].some((w) => lowered.includes(w));
-  return hasVideo && hasPublishIntent;
-}
-
 interface PendingAttachment {
   id: string;
   file: File;
   url: string;
   kind: AttachmentKind;
-}
-
-interface PromptTemplate {
-  id: string;
-  label: string;
-  text: string;
-}
-
-function loadTemplates(): PromptTemplate[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(TEMPLATES_STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as PromptTemplate[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveTemplates(templates: PromptTemplate[]) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(TEMPLATES_STORAGE_KEY, JSON.stringify(templates));
-}
-
-interface ProviderStatusMap {
-  [assetType: string]: { ok: boolean; updatedAt: string };
-}
-
-function loadProviderStatus(): ProviderStatusMap {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = localStorage.getItem(PROVIDER_STATUS_STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as ProviderStatusMap) : {};
-  } catch {
-    return {};
-  }
-}
-
-function recordProviderStatus(assetType: string, ok: boolean) {
-  if (typeof window === "undefined") return;
-  const current = loadProviderStatus();
-  current[assetType] = { ok, updatedAt: new Date().toISOString() };
-  localStorage.setItem(PROVIDER_STATUS_STORAGE_KEY, JSON.stringify(current));
 }
 
 /* ---------- Code block with copy ---------- */
@@ -226,23 +94,123 @@ function CodeBlock({ code, lang, onCopy }: { code: string; lang?: string; onCopy
   );
 }
 
-/* ---------- Markdown styling for AI responses ---------- */
-const markdownComponents = {
-  h1: (props: any) => <h1 className="mt-3 mb-2 text-lg font-bold text-foreground first:mt-0" {...props} />,
-  h2: (props: any) => <h2 className="mt-3 mb-2 text-base font-bold text-foreground first:mt-0" {...props} />,
-  h3: (props: any) => <h3 className="mt-2 mb-1 text-sm font-bold uppercase tracking-wide text-foreground first:mt-0" {...props} />,
-  p: (props: any) => <p className="mb-2 whitespace-pre-wrap leading-relaxed last:mb-0" {...props} />,
-  strong: (props: any) => <strong className="font-semibold text-foreground" {...props} />,
-  em: (props: any) => <em className="italic" {...props} />,
-  ul: (props: any) => <ul className="mb-2 ml-4 list-disc space-y-1 last:mb-0" {...props} />,
-  ol: (props: any) => <ol className="mb-2 ml-4 list-decimal space-y-1 last:mb-0" {...props} />,
-  li: (props: any) => <li className="leading-relaxed" {...props} />,
-  hr: () => <hr className="my-3 border-border" />,
-  blockquote: (props: any) => <blockquote className="my-2 border-l-4 border-primary/40 pl-3 italic text-muted-foreground" {...props} />,
-  a: (props: any) => (
-    <a className="text-primary underline hover:no-underline" target="_blank" rel="noreferrer" {...props} />
-  ),
-};
+/* ---------- Inline **bold** support ---------- */
+function renderInline(text: string, keyPrefix: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((p, i) =>
+    p.startsWith("**") && p.endsWith("**") ? (
+      <strong key={`${keyPrefix}-b-${i}`} className="font-bold text-foreground">
+        {p.slice(2, -2)}
+      </strong>
+    ) : (
+      <span key={`${keyPrefix}-t-${i}`}>{p}</span>
+    )
+  );
+}
+
+const LABEL_PATTERN = /^([A-Za-z][A-Za-z \-]{1,28}):\s*(.*)$/;
+
+/* ---------- Renders one line: headings / labels (Scene, Visual, VO...) / bullets / text ---------- */
+function renderLine(line: string, key: string) {
+  const h3 = line.match(/^###\s+(.*)$/);
+  if (h3) {
+    return (
+      <h4 key={key} className="mt-3 mb-1 text-[11px] font-bold uppercase tracking-wider text-primary">
+        {h3[1]}
+      </h4>
+    );
+  }
+  const h2 = line.match(/^##\s+(.*)$/);
+  if (h2) {
+    return (
+      <h3 key={key} className="mt-4 mb-1.5 text-[15px] font-extrabold text-foreground">
+        {h2[1]}
+      </h3>
+    );
+  }
+  const h1 = line.match(/^#\s+(.*)$/);
+  if (h1) {
+    return (
+      <h2 key={key} className="mt-4 mb-1.5 text-base font-extrabold text-foreground">
+        {h1[1]}
+      </h2>
+    );
+  }
+  const bullet = line.match(/^[*-]\s+(.*)$/);
+  if (bullet) {
+    return (
+      <li key={key} className="ml-4 list-disc leading-relaxed">
+        {renderInline(bullet[1], key)}
+      </li>
+    );
+  }
+  const label = line.match(LABEL_PATTERN);
+  if (label && label[1].split(" ").length <= 4) {
+    return (
+      <p key={key} className="leading-relaxed">
+        <strong className="font-bold text-foreground">{label[1]}:</strong> {renderInline(label[2], key)}
+      </p>
+    );
+  }
+  if (!line.trim()) return null;
+  return (
+    <p key={key} className="whitespace-pre-wrap leading-relaxed">
+      {renderInline(line, key)}
+    </p>
+  );
+}
+
+function TextLines({ text }: { text: string }) {
+  return <div className="space-y-1">{text.split("\n").map((l, i) => renderLine(l, `l-${i}`))}</div>;
+}
+
+/* ---------- Boxed document (script/command) with its own Copy/Download ---------- */
+function isStructuredDocument(text: string) {
+  const h1h2 = text.match(/^#{1,2}\s+.+$/gm) || [];
+  const h3 = text.match(/^#{3}\s+.+$/gm) || [];
+  return h1h2.length >= 1 && h3.length >= 2;
+}
+
+function StructuredDocumentBlock({ text, onCopy }: { text: string; onCopy: (t: string) => void }) {
+  function handleDownload() {
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "script.txt";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <div className="my-2 overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+      <div className="flex items-center justify-between border-b border-border bg-muted/60 px-3 py-2">
+        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Document</span>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => onCopy(text)}
+            className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            title="Copy"
+          >
+            <Copy className="h-3.5 w-3.5" />
+            Copy
+          </button>
+          <button
+            onClick={handleDownload}
+            className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            title="Download"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Download
+          </button>
+        </div>
+      </div>
+      <div className="max-h-[420px] overflow-y-auto px-4 py-3 text-[15px]">
+        <TextLines text={text} />
+      </div>
+    </div>
+  );
+}
 
 /* ---------- Collapsible long text ---------- */
 function CollapsibleText({ text }: { text: string }) {
@@ -251,19 +219,13 @@ function CollapsibleText({ text }: { text: string }) {
   const isLong = lineCount > COLLAPSE_LINES;
 
   if (!isLong) {
-    return (
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-        {text}
-      </ReactMarkdown>
-    );
+    return <TextLines text={text} />;
   }
 
   return (
     <div className="my-1 overflow-hidden rounded-lg border border-border bg-muted/50">
-      <div className={`p-3 text-sm leading-relaxed ${expanded ? "" : "max-h-32 overflow-hidden"}`}>
-        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-          {text}
-        </ReactMarkdown>
+      <div className={`p-3 text-sm ${expanded ? "" : "max-h-32 overflow-hidden"}`}>
+        <TextLines text={text} />
       </div>
       <button
         onClick={() => setExpanded((v) => !v)}
@@ -295,84 +257,76 @@ function parseSegments(content: string) {
   return segments;
 }
 
-function renderContent(content: string, onCopy: (t: string) => void, collapsible: boolean) {
-  return parseSegments(content).map((seg, i) =>
-    seg.type === "code" ? (
-      <CodeBlock key={i} code={seg.content} lang={seg.lang} onCopy={onCopy} />
-    ) : collapsible ? (
-      <CollapsibleText key={i} text={seg.content} />
-    ) : (
-      <div key={i}>
-        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-          {seg.content}
-        </ReactMarkdown>
-      </div>
-    )
+function extractSourcesSection(text: string) {
+  const lines = text.split("\n");
+  const headingRe = /^(#{1,3}\s*)?(official\s+)?sources\s*:?\s*$/i;
+  let idx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (headingRe.test(lines[i].trim())) {
+      idx = i;
+      break;
+    }
+  }
+  if (idx === -1) return { mainText: text, links: [] as { title: string; url: string }[] };
+
+  const before = lines.slice(0, idx).join("\n").trim();
+  const after = lines.slice(idx + 1);
+  const links: { title: string; url: string }[] = [];
+  const leftover: string[] = [];
+  const linkPattern = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/;
+
+  for (const line of after) {
+    const m = line.match(linkPattern);
+    if (m) {
+      links.push({ title: m[1], url: m[2] });
+    } else if (line.trim()) {
+      leftover.push(line.replace(/^[*-]\s*/, ""));
+    }
+  }
+
+  const mainText = [before, ...leftover].filter(Boolean).join("\n\n");
+  return { mainText, links };
+}
+
+function SourcesRow({ links }: { links: { title: string; url: string }[] }) {
+  if (links.length === 0) return null;
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {links.map((l, i) => (
+        <a
+          key={i}
+          href={l.url}
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+          title={l.url}
+        >
+          <Link2 className="h-3 w-3" />
+          <span className="max-w-[140px] truncate">{l.title}</span>
+        </a>
+      ))}
+    </div>
   );
 }
 
-const ASSET_TYPE_LABELS: Record<string, string> = {
-  script: "Script",
-  document: "Document",
-  seo: "SEO Package",
-};
-
-/* ---------- Artifact-style card for scripts / documents / SEO packages ---------- */
-function GeneratedContentCard({
-  content,
-  assetType,
-  fileUrl,
-  assetId,
-  onCopy,
-}: {
-  content: string;
-  assetType: string;
-  fileUrl?: string | null;
-  assetId?: string;
-  onCopy: (t: string) => void;
-}) {
-  const label = ASSET_TYPE_LABELS[assetType] ?? "Generated Content";
-
+function renderContent(content: string, onCopy: (t: string) => void, collapsible: boolean) {
+  const { mainText, links } = extractSourcesSection(content);
+  const segments = parseSegments(mainText).map((seg, i) => {
+    if (seg.type === "code") {
+      return <CodeBlock key={i} code={seg.content} lang={seg.lang} onCopy={onCopy} />;
+    }
+    if (isStructuredDocument(seg.content)) {
+      return <StructuredDocumentBlock key={i} text={seg.content} onCopy={onCopy} />;
+    }
+    return collapsible ? <CollapsibleText key={i} text={seg.content} /> : <TextLines key={i} text={seg.content} />;
+  });
   return (
-    <div className="my-1 w-full max-w-full overflow-hidden rounded-xl border border-border bg-background shadow-sm">
-      <div className="flex items-center justify-between border-b border-border bg-muted/60 px-3 py-2">
-        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-          <FileCode2 className="h-3.5 w-3.5" />
-          {label}
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => onCopy(content)}
-            className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            title="Copy"
-          >
-            <Copy className="h-3.5 w-3.5" />
-            Copy
-          </button>
-          {fileUrl ? (
-            <a
-              href={fileUrl}
-              download
-              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              title="Download"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Download
-            </a>
-          ) : null}
-        </div>
-      </div>
-      <div className="max-h-[420px] overflow-y-auto p-4 text-[15px] leading-relaxed">
-        {renderContent(content, onCopy, false)}
-      </div>
-      {assetType === "video" && assetId ? (
-        <div className="border-t border-border px-3 py-2">
-          <PublishToYouTubeButton assetId={assetId} defaultTitle={content.slice(0, 80)} />
-        </div>
-      ) : null}
-    </div>
+    <>
+      {segments}
+      <SourcesRow links={links} />
+    </>
   );
-  }
+}
 
 function AttachmentPreview({ attachment }: { attachment: ChatAttachment }) {
   if (attachment.kind === "image") {
@@ -385,47 +339,20 @@ function AttachmentPreview({ attachment }: { attachment: ChatAttachment }) {
     return <audio src={attachment.url} controls className="w-full" />;
   }
   return (
-    <a href={attachment.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2 text-sm hover:bg-accent">
+    <a
+      href={attachment.url}
+      target="_blank"
+      rel="noreferrer"
+      className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2 text-sm hover:bg-accent"
+    >
       <FileText className="h-4 w-4 shrink-0" />
       <span className="truncate">{attachment.name}</span>
     </a>
   );
 }
 
-/* ---------- Feature 3: Provider status indicator ---------- */
-function ProviderStatusBar({ status }: { status: ProviderStatusMap }) {
-  const entries = Object.entries(status);
-  if (entries.length === 0) return null;
-
-  return (
-    <div className="flex flex-wrap items-center gap-1.5 border-b border-border bg-muted/40 px-4 py-1.5 text-[11px]">
-      <span className="font-medium text-muted-foreground">Status:</span>
-      {entries.map(([assetType, s]) => (
-        <span
-          key={assetType}
-          className={`flex items-center gap-1 rounded-full px-2 py-0.5 font-medium ${
-            s.ok ? "bg-emerald-500/10 text-emerald-600" : "bg-destructive/10 text-destructive"
-          }`}
-          title={new Date(s.updatedAt).toLocaleString()}
-        >
-          <span className={`h-1.5 w-1.5 rounded-full ${s.ok ? "bg-emerald-500" : "bg-destructive"}`} />
-          {assetType}
-        </span>
-      ))}
-    </div>
-  );
-}
-
 export default function CommandInput() {
   const searchParams = useSearchParams();
-  const router = useRouter();
-  const user = useAuthStore((state) => state.user);
-  const firstName = user?.full_name?.trim().split(/\s+/)[0] || "there";
-  const abortControllerRef = useRef<AbortController | null>(null);
-
-  function handleStop() {
-    abortControllerRef.current?.abort();
-  }
   const [prompt, setPrompt] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -437,25 +364,6 @@ export default function CommandInput() {
   const [selectionPopup, setSelectionPopup] = useState<{ x: number; y: number; text: string } | null>(null);
   const [waveLevels, setWaveLevels] = useState<number[]>(Array(WAVE_BAR_COUNT).fill(3));
   const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
-
-  // Feature 4: prompt templates
-  const [templates, setTemplatesState] = useState<PromptTemplate[]>([]);
-  // Single combined popover (opened from the icon button next to Mic)
-  // that holds: saved templates list, "save current as template", and
-  // the batch-variations toggle - keeps the toolbar from being cluttered.
-  const [toolsOpen, setToolsOpen] = useState(false);
-
-  // Feature 3: provider status (client-side memory of last known result per asset type)
-  const [providerStatus, setProviderStatus] = useState<ProviderStatusMap>({});
-
-  // Feature 6: batch/bulk generation
-  const [batchMode, setBatchMode] = useState(false);
-  const BATCH_COUNT = 3;
-
-  useEffect(() => {
-    setTemplatesState(loadTemplates());
-    setProviderStatus(loadProviderStatus());
-  }, []);
 
   function toggleSources(messageId: string) {
     setExpandedSources((prev) => {
@@ -502,16 +410,7 @@ export default function CommandInput() {
     if (!id) return;
     fetchConversation(id)
       .then((msgs) => {
-        if (msgs.length > 0) {
-          setMessages(msgs);
-          setExpandedSources((prev) => {
-            const next = new Set(prev);
-            for (const m of msgs) {
-              if (m.sources && m.sources.length > 0) next.add(m.id);
-            }
-            return next;
-          });
-        }
+        if (msgs.length > 0) setMessages(msgs);
       })
       .catch(() => {
         clearStoredConversationId();
@@ -606,29 +505,24 @@ export default function CommandInput() {
       }
       const source = audioContext.createMediaStreamSource(stream);
       const analyser = audioContext.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.6;
+      analyser.fftSize = 128;
       source.connect(analyser);
       audioContextRef.current = audioContext;
 
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
       function updateLevels() {
-        analyser.getByteFrequencyData(dataArray);
-        const usableBins = Math.floor(dataArray.length * 0.6);
-        const chunkSize = Math.max(1, Math.floor(usableBins / WAVE_BAR_COUNT));
+        analyser.getByteTimeDomainData(dataArray);
+        const chunkSize = Math.max(1, Math.floor(dataArray.length / WAVE_BAR_COUNT));
         const levels = Array.from({ length: WAVE_BAR_COUNT }, (_, i) => {
           const start = i * chunkSize;
-          let sum = 0;
-          let count = 0;
-          for (let j = start; j < start + chunkSize && j < usableBins; j++) {
-            sum += dataArray[j];
-            count++;
+          let maxDev = 0;
+          for (let j = start; j < start + chunkSize && j < dataArray.length; j++) {
+            maxDev = Math.max(maxDev, Math.abs(dataArray[j] - 128));
           }
-          const avg = count > 0 ? sum / count : 0;
-          const normalized = avg / 255;
-          const boosted = Math.pow(normalized, 0.6);
-          return Math.max(4, Math.min(40, boosted * 40));
+          const normalized = maxDev / 128;
+          const boosted = Math.pow(normalized, 0.5); // amplify quiet/normal speech
+          return Math.max(3, Math.min(32, boosted * 32));
         });
         setWaveLevels(levels);
         animationFrameRef.current = requestAnimationFrame(updateLevels);
@@ -639,29 +533,15 @@ export default function CommandInput() {
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
 
-      recorder.onstop = async () => {
+      recorder.onstop = () => {
         const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
         const file = new File([blob], `voice-${Date.now()}.webm`, { type: "audio/webm" });
+        const url = URL.createObjectURL(file);
+        setAttachments((prev) => [...prev, { id: crypto.randomUUID(), file, url, kind: "audio" }]);
         stream.getTracks().forEach((t) => t.stop());
         if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
         audioContext.close();
         setWaveLevels(Array(WAVE_BAR_COUNT).fill(3));
-
-        try {
-          const formData = new FormData();
-          formData.append("file", file);
-          const { data } = await apiClient.post<{ text: string }>(
-            "/api/v1/commands/transcribe",
-            formData,
-            { headers: { "Content-Type": undefined } }
-          );
-          if (data?.text) {
-            setPrompt((prev) => (prev ? `${prev} ${data.text}` : data.text));
-            requestAnimationFrame(() => textareaRef.current?.focus());
-          }
-        } catch {
-          toast.error("Could not transcribe voice. Please try again.");
-        }
       };
 
       recorder.start();
@@ -677,108 +557,29 @@ export default function CommandInput() {
     setIsRecording(false);
   }
 
-  // Feature 1: retry - resubmits the exact prompt that produced a
-  // failed assistant message. Looks up the preceding user message by
-  // walking backwards from the failed message's position.
-  function handleRetry(assistantMessageId: string) {
-    const idx = messages.findIndex((m) => m.id === assistantMessageId);
-    if (idx === -1) return;
-    let userText: string | null = null;
-    for (let i = idx - 1; i >= 0; i--) {
-      if (messages[i].role === "user") {
-        userText = messages[i].content;
-        break;
-      }
-    }
-    if (!userText) {
-      toast.error("Could not find the original message to retry.");
-      return;
-    }
-    submitPrompt(userText);
-  }
-
-  // Feature 4: templates
-  function saveCurrentAsTemplate() {
-    const text = prompt.trim();
-    if (!text) {
-      toast.error("Type a prompt first, then save it as a template.");
-      return;
-    }
-    const label = text.length > 40 ? `${text.slice(0, 40)}...` : text;
-    const next = [...templates, { id: crypto.randomUUID(), label, text }];
-    setTemplatesState(next);
-    saveTemplates(next);
-    toast.success("Saved as template.");
-  }
-
-  function useTemplate(t: PromptTemplate) {
-    setPrompt(t.text);
-    setToolsOpen(false);
-    requestAnimationFrame(() => textareaRef.current?.focus());
-  }
-
-  function deleteTemplate(id: string) {
-    const next = templates.filter((t) => t.id !== id);
-    setTemplatesState(next);
-    saveTemplates(next);
-  }
-
-  // Shared success-handling logic used by both the buffered (pipeline)
-  // path and the new streaming path - identical to what used to be
-  // inline here, just factored out so both paths use exactly the same
-  // finalization code (no duplicated/diverging behavior).
-  function finalizeFromAsset(assistantId: string, asset: import("@/features/assets/types/asset").Asset) {
-    const meta = (asset.extra_metadata ?? {}) as Record<string, unknown>;
-    const text =
-      (typeof meta.text === "string" && meta.text) ||
-      (typeof meta.raw_result === "string" && meta.raw_result) ||
-      (typeof meta.result === "string" && meta.result) ||
-      "";
-    const sources = Array.isArray(meta.sources) ? (meta.sources as ChatSource[]) : undefined;
-
-    updateMessage(assistantId, {
-      content: text,
-      status: asset.status === "failed" ? "failed" : "completed",
-      assetType: asset.asset_type,
-        assetId: asset.id,
-      fileUrl: asset.file_url,
-      errorMessage: asset.error_message,
-      sources,
-    });
-
-    if (sources && sources.length > 0) {
-      setExpandedSources((prev) => new Set(prev).add(assistantId));
-    }
-
-    if (asset.asset_type) {
-      recordProviderStatus(asset.asset_type, asset.status !== "failed");
-      setProviderStatus(loadProviderStatus());
-    }
-
-    if (asset.status === "failed" && asset.error_message) {
-      const msg = asset.error_message;
-      if (NEEDS_UPGRADE_PATTERN.test(msg)) {
-        toast.error(getDisplayErrorMessage(msg), {
-          duration: Infinity,
-          closeButton: true,
-          action: { label: "Upgrade", onClick: () => router.push("/billing") },
-        });
-      } else {
-        toast.error(getDisplayErrorMessage(msg));
-      }
-    }
-  }
-
-  // Shared submit path used by the normal send button, retry, and batch.
-  async function submitPrompt(value: string, attachmentsOverride?: PendingAttachment[]) {
-    const activeAttachments = attachmentsOverride ?? [];
-    if (!value.trim() && activeAttachments.length === 0) return;
+  async function handleSubmit() {
+    const typed = prompt.trim();
+    const quoted = replyTo ? `> ${replyTo.replace(/\n/g, "\n> ")}\n\n` : "";
+    const pasted = pastedBlock ? `\n\n${pastedBlock}` : "";
+    const value = `${quoted}${typed}${pasted}`.trim();
+    if (!value && attachments.length === 0) return;
+    if (isSubmitting) return;
 
     const history = buildHistory(messages);
     const chatAttachments: ChatAttachment[] | undefined =
-      activeAttachments.length > 0
-        ? activeAttachments.map((a) => ({ id: a.id, url: a.url, kind: a.kind, name: a.file.name }))
+      attachments.length > 0
+        ? attachments.map((a) => ({ id: a.id, url: a.url, kind: a.kind, name: a.file.name }))
         : undefined;
+
+    setIsSubmitting(true);
+    setPrompt("");
+    setPastedBlock(null);
+    setPastedBlockExpanded(false);
+    setReplyTo(null);
+    setAttachments([]);
+    requestAnimationFrame(() => {
+      if (textareaRef.current) textareaRef.current.style.height = `${MIN_TEXTAREA_HEIGHT}px`;
+    });
 
     const userMessage: ChatMessage = {
       id: crypto.randomUUID(),
@@ -792,7 +593,7 @@ export default function CommandInput() {
     const assistantMessage: ChatMessage = {
       id: assistantId,
       role: "assistant",
-      content: guessPendingLabel(value),
+      content: "",
       createdAt: new Date().toISOString(),
       status: "pending",
     };
@@ -800,111 +601,41 @@ export default function CommandInput() {
     addMessage(assistantMessage);
 
     try {
-      if (wantsFullPipeline(value)) {
-        // === UNCHANGED existing behavior: multi-step pipeline (script
-        // -> thumbnail -> video -> SEO) only exists on the buffered
-        // endpoint, so this path is left exactly as it was. ===
-        const response = await runCommand(value || "Sent attachment(s)", history);
+      const response = await runCommand(value || "Sent attachment(s)", history);
 
-        if ("workflow_id" in response && response.workflow_id) {
-          pollWorkflow(response.workflow_id, assistantId);
-          return;
-        }
-
-        const { asset } = response as { asset: import("@/features/assets/types/asset").Asset };
-        finalizeFromAsset(assistantId, asset);
+      if ("workflow_id" in response && response.workflow_id) {
+        pollWorkflow(response.workflow_id, assistantId);
         return;
       }
 
-      // === NEW: streaming path for everything else. The backend
-      // classifies intent server-side and, for text/script/research,
-      // streams the answer token-by-token so the user sees real
-      // progress instead of a static "Generating..." placeholder.
-      // For image/video/audio/document/seo it behaves the same as the
-      // buffered call (one completion event) - no regression there. ===
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
+      const { asset } = response as { asset: import("@/features/assets/types/asset").Asset };
+      const meta = (asset.extra_metadata ?? {}) as Record<string, unknown>;
+      // Backend may save the reply under different keys depending on
+      // which agent handled it (text / raw_result / result) - check
+      // all of them instead of assuming "text", or the message shows
+      // as an empty bubble even though the backend succeeded.
+      const text =
+        (typeof meta.text === "string" && meta.text) ||
+        (typeof meta.raw_result === "string" && meta.raw_result) ||
+        (typeof meta.result === "string" && meta.result) ||
+        "";
 
-      let streamedText = "";
-      let receivedAnyToken = false;
-      const result = await runCommandStream(
-        value || "Sent attachment(s)",
-        history,
-        {
-          onToken: (delta) => {
-            receivedAnyToken = true;
-            streamedText += delta;
-            updateMessage(assistantId, { content: streamedText, status: "pending" });
-          },
-          onDone: () => {},
-        },
-        controller.signal
-      );
-      abortControllerRef.current = null;
+      updateMessage(assistantId, {
+        content: text,
+        status: asset.status === "failed" ? "failed" : "completed",
+        assetType: asset.asset_type,
+        fileUrl: asset.file_url,
+        errorMessage: asset.error_message,
+      });
 
-      if ("asset" in result) {
-        finalizeFromAsset(assistantId, result.asset);
-      } else {
-        // User hit Stop mid-stream - keep whatever text arrived so far
-        // instead of discarding it or treating it as an error.
-        updateMessage(assistantId, {
-          content: result.partialText || streamedText,
-          status: "completed",
-        });
+      if (asset.status === "failed" && asset.error_message) {
+        toast.error(asset.error_message);
       }
+      setIsSubmitting(false);
     } catch (error) {
-      abortControllerRef.current = null;
       const message = extractErrorMessage(error);
       updateMessage(assistantId, { status: "failed", errorMessage: message });
-      if (NEEDS_UPGRADE_PATTERN.test(message)) {
-        toast.error(getDisplayErrorMessage(message), {
-          duration: Infinity,
-          closeButton: true,
-          action: { label: "Upgrade", onClick: () => router.push("/billing") },
-        });
-      } else {
-        toast.error(getDisplayErrorMessage(message));
-      }
-    }
-  }
-
-  async function handleSubmit() {
-    const typed = prompt.trim();
-    const quoted = replyTo ? `> ${replyTo.replace(/\n/g, "\n> ")}\n\n` : "";
-    const pasted = pastedBlock ? `\n\n${pastedBlock}` : "";
-    const value = `${quoted}${typed}${pasted}`.trim();
-    if (!value && attachments.length === 0) return;
-    if (isSubmitting) return;
-
-    const activeAttachments = attachments;
-    setIsSubmitting(true);
-    setPrompt("");
-    setPastedBlock(null);
-    setPastedBlockExpanded(false);
-    setReplyTo(null);
-    setAttachments([]);
-    requestAnimationFrame(() => {
-      if (textareaRef.current) textareaRef.current.style.height = `${MIN_TEXTAREA_HEIGHT}px`;
-    });
-
-    try {
-      if (batchMode) {
-        // Feature 6: fire off BATCH_COUNT variations in parallel so
-        // the user can compare and pick the best result.
-        const variationSuffixes = [
-          "",
-          " (give a different creative angle than usual)",
-          " (try a distinct style/tone variation)",
-        ];
-        await Promise.all(
-          Array.from({ length: BATCH_COUNT }, (_, i) =>
-            submitPrompt(`${value}${variationSuffixes[i] ?? ""}`, i === 0 ? activeAttachments : undefined)
-          )
-        );
-      } else {
-        await submitPrompt(value, activeAttachments);
-      }
-    } finally {
+      toast.error(message);
       setIsSubmitting(false);
     }
   }
@@ -963,12 +694,9 @@ export default function CommandInput() {
           }
 
           const failedSteps = wf.steps.filter((s) => s.status === "failed");
-          const needsUpgrade = failedSteps.some((s) => NEEDS_UPGRADE_PATTERN.test(s.error_message || ""));
-          const firstFailedError = failedSteps[0]?.error_message ?? null;
-
           if (failedSteps.length > 0) {
             finalText += (finalText ? "\n\n" : "") +
-              failedSteps.map((s) => `${STEP_LABELS[s.asset_type] ?? s.asset_type} could not be completed.`).join("\n");
+              failedSteps.map((s) => `${STEP_LABELS[s.asset_type] ?? s.asset_type} failed: ${s.error_message ?? "unknown error"}`).join("\n");
           }
 
           updateMessage(assistantId, {
@@ -976,29 +704,17 @@ export default function CommandInput() {
             status: wf.status === "failed" ? "failed" : "completed",
             assetType,
             fileUrl,
-            errorMessage: firstFailedError,
-              assetId: videoStep?.asset_id || imageStep?.asset_id || textStep?.asset_id || undefined,
           });
 
-          if (assetType) {
-            recordProviderStatus(assetType, wf.status !== "failed");
-            setProviderStatus(loadProviderStatus());
-          }
-
-          if (needsUpgrade) {
-            toast.error(getDisplayErrorMessage(firstFailedError), {
-              duration: Infinity,
-              closeButton: true,
-              action: { label: "Upgrade", onClick: () => router.push("/billing") },
-            });
-          } else if (wf.status === "failed") {
-            toast.error(getDisplayErrorMessage(firstFailedError));
+          if (wf.status === "failed") {
+            toast.error("Pipeline failed.");
           } else if (wf.status === "completed_with_errors") {
-            toast.error("Some steps didn't complete; the rest finished successfully.");
+            toast.error("Some steps failed; the rest completed.");
           } else {
             toast.success("Pipeline complete!");
           }
 
+          setIsSubmitting(false);
           return;
         }
 
@@ -1034,39 +750,19 @@ export default function CommandInput() {
   const waveColors = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
 
   return (
-    <div className="relative isolate flex h-full flex-col overflow-hidden bg-background">
-      <BrandWatermark variant="hero" visible={messages.length === 0 && !prompt.trim()} />
-      <div className="flex items-center justify-end border-b border-border px-4 py-2">
-        <div className="flex items-center gap-1">
-          <a
-            href="/assets"
-            className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            title="View generated assets"
-          >
-            <Layers className="h-3.5 w-3.5" />
-            Library
-          </a>
-          <button
-            onClick={() => router.push("/billing")}
-            className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10"
-            title="Upgrade your plan"
-          >
-            <CreditCard className="h-3.5 w-3.5" />
-            Upgrade
-          </button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleNewChat}
-            className="gap-1.5 text-muted-foreground"
-          >
-            <Plus className="h-4 w-4" />
-            New chat
-          </Button>
-        </div>
+    <div className="flex h-full flex-col rounded-2xl border border-border bg-card shadow-sm">
+      <div className="flex items-center justify-between border-b border-border px-4 py-2">
+        <span className="text-sm font-medium text-muted-foreground">Command Center</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleNewChat}
+          className="gap-1.5 text-muted-foreground"
+        >
+          <Plus className="h-4 w-4" />
+          New chat
+        </Button>
       </div>
-
-      <ProviderStatusBar status={providerStatus} />
 
       <div
         ref={scrollRef}
@@ -1074,40 +770,15 @@ export default function CommandInput() {
         className="flex-1 space-y-4 overflow-y-auto p-5"
       >
         {messages.length === 0 ? (
-          <div className="flex h-full min-h-[50vh] flex-col items-center justify-center px-4 text-center">
-            <p className="font-console-display text-2xl font-semibold text-foreground">
-              Good to see you, {firstName}.
-            </p>
-            <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">
-              What do you want to create today? Describe it below, or start with one of these.
-            </p>
-            <div className="mt-6 flex max-w-2xl flex-wrap items-center justify-center gap-2.5">
-              {[
-                { label: "\ud83c\udfac Write a video script", text: "Write a 60-second YouTube script about " },
-                { label: "\ud83d\uddbc\ufe0f Design a thumbnail", text: "Generate a thumbnail idea for a video about " },
-                { label: "\ud83c\udf99\ufe0f Narrate a voiceover", text: "Write and narrate a short voiceover about " },
-                { label: "\ud83d\udd0d Optimize for SEO", text: "Write SEO title, description, and tags for a video about " },
-              ].map((chip) => (
-                <button
-                  key={chip.label}
-                  type="button"
-                  onClick={() => setPrompt(chip.text)}
-                  className="rounded-full border border-border bg-card px-4 py-2 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-                >
-                  {chip.label}
-                </button>
-              ))}
-            </div>
+          <div className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+            Type a command below. Example: write a script about morning routines
           </div>
         ) : null}
 
         {messages.map((message) => {
           const isUser = message.role === "user";
-          const isCardType = !isUser && message.assetType && CARD_ASSET_TYPES.has(message.assetType);
           const bubbleClass = isUser
             ? "max-w-[75%] space-y-2 rounded-2xl bg-chat-user px-4 py-3 text-[15px] leading-relaxed text-chat-user-foreground"
-            : isCardType
-            ? "max-w-[85%] w-full space-y-2"
             : "max-w-[75%] space-y-2 rounded-2xl bg-muted px-4 py-3 text-[15px] leading-relaxed text-foreground";
           const rowClass = isUser ? "flex flex-col items-end" : "flex flex-col items-start";
 
@@ -1123,33 +794,14 @@ export default function CommandInput() {
                 ) : null}
 
                 {message.status === "pending" ? (
-                  <p className={isCardType ? "px-1 text-muted-foreground" : "text-muted-foreground"}>{message.content || "Generating..."}</p>
+                  <p className="text-muted-foreground">Generating...</p>
                 ) : null}
 
                 {message.status === "failed" ? (
-                  <div className={isCardType ? "px-1" : ""}>
-                    <p className="text-destructive">{getDisplayErrorMessage(message.errorMessage)}</p>
-                    <button
-                      onClick={() => handleRetry(message.id)}
-                      className="mt-1 flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                    >
-                      <RefreshCw className="h-3 w-3" />
-                      Retry
-                    </button>
-                  </div>
+                  <p className="text-destructive">{message.errorMessage ?? "Something went wrong."}</p>
                 ) : null}
 
-                {message.status === "completed" && message.content && isCardType ? (
-                  <GeneratedContentCard
-                    content={message.content}
-                    assetType={message.assetType as string}
-                    fileUrl={message.fileUrl}
-                    assetId={message.assetId}
-                      onCopy={handleCopy}
-                  />
-                ) : message.status === "completed" && message.content ? (
-                  renderContent(message.content, handleCopy, isUser)
-                ) : null}
+                {message.status === "completed" && message.content ? renderContent(message.content, handleCopy, isUser) : null}
 
                 {message.status === "completed" && message.fileUrl && message.assetType === "image" ? (
                   <img src={message.fileUrl} alt="Generated" className="max-h-64 rounded-lg border border-border object-cover" />
@@ -1163,10 +815,6 @@ export default function CommandInput() {
 
                 {message.status === "completed" && message.sources && message.sources.length > 0 && expandedSources.has(message.id) ? (
                   <div className="mt-2 space-y-1.5 rounded-lg border border-border bg-background/60 p-2.5">
-                    <div className="mb-1 flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      <Link2 className="h-3 w-3" />
-                      Sources
-                    </div>
                     {message.sources.map((s, i) => (
                       <a
                         key={i}
@@ -1288,60 +936,6 @@ export default function CommandInput() {
           </div>
         ) : null}
 
-        {toolsOpen ? (
-          <div className="mb-2 max-h-64 overflow-y-auto rounded-lg border border-border bg-background p-2 shadow-sm">
-            <div className="mb-2 flex items-center justify-between px-1">
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Prompt tools</span>
-              <button onClick={() => setToolsOpen(false)} className="text-muted-foreground hover:text-destructive">
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-
-            <label className="mb-2 flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs font-medium text-muted-foreground hover:bg-accent">
-              <input
-                type="checkbox"
-                checked={batchMode}
-                onChange={(e) => setBatchMode(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-border"
-              />
-              Generate {BATCH_COUNT} variations
-            </label>
-
-            <button
-              onClick={saveCurrentAsTemplate}
-              className="mb-2 flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              title="Save current prompt as a template"
-            >
-              <Star className="h-3.5 w-3.5" />
-              Save current prompt as template
-            </button>
-
-            <div className="border-t border-border pt-2">
-              <span className="mb-1 block px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Saved templates
-              </span>
-              {templates.length === 0 ? (
-                <p className="px-1 py-1 text-xs text-muted-foreground">
-                  No templates yet - type a prompt below, then tap "Save current prompt as template".
-                </p>
-              ) : (
-                <div className="space-y-1">
-                  {templates.map((t) => (
-                    <div key={t.id} className="flex items-center gap-1 rounded-md px-1.5 py-1 hover:bg-accent">
-                      <button onClick={() => useTemplate(t)} className="min-w-0 flex-1 truncate text-left text-xs text-foreground">
-                        {t.label}
-                      </button>
-                      <button onClick={() => deleteTemplate(t.id)} className="shrink-0 text-muted-foreground hover:text-destructive">
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        ) : null}
-
         <div className="relative flex flex-col gap-2 rounded-xl border border-border bg-background p-2 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all">
           <div className="flex items-end gap-2">
             <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileSelect} />
@@ -1369,11 +963,11 @@ export default function CommandInput() {
 
             <div className="flex shrink-0 items-center gap-1 pr-1">
               {isRecording ? (
-                <div className="mr-1 flex h-10 items-end gap-[3px]">
+                <div className="mr-1 flex h-6 items-end gap-[2px]">
                   {waveLevels.map((level, i) => (
                     <span
                       key={i}
-                      className="w-[3px] rounded-full transition-all duration-75"
+                      className="w-[2px] rounded-full transition-all duration-75"
                       style={{ height: `${level}px`, background: waveColors[i % waveColors.length] }}
                     />
                   ))}
@@ -1383,16 +977,7 @@ export default function CommandInput() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setToolsOpen((v) => !v)}
-                title="Templates and batch options"
-                className={batchMode ? "text-primary" : undefined}
-              >
-                <Wand2 className="h-5 w-5" />
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="icon"
+                className={`h-9 w-9 rounded-lg transition-colors ${isRecording ? "bg-destructive/10 text-destructive animate-pulse" : "text-muted-foreground"}`}
                 onClick={isRecording ? stopRecording : startRecording}
                 title={isRecording ? "Stop recording" : "Record voice"}
               >
@@ -1400,19 +985,18 @@ export default function CommandInput() {
               </Button>
 
               <Button
-                onClick={isSubmitting ? handleStop : handleSubmit}
-                disabled={!isSubmitting && !prompt.trim() && !pastedBlock && attachments.length === 0}
+                onClick={handleSubmit}
+                disabled={isSubmitting || (!prompt.trim() && !pastedBlock && attachments.length === 0)}
                 size="icon"
                 className="h-9 w-9 rounded-lg shadow-sm"
-                title={isSubmitting ? "Stop generating" : "Send"}
               >
-                {isSubmitting ? <Square className="h-4 w-4 fill-current" /> : <Send className="h-4 w-4" />}
+                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </div>
           </div>
         </div>
 
-        {attachMenuOpen ? (
+        {attachMenuOpen && (
           <div className="absolute bottom-full left-4 mb-2 w-48 rounded-xl border bg-popover p-1 shadow-xl z-50">
             <button onClick={() => openFilePicker("image/*")} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-accent">
               <ImageIcon className="h-4 w-4 text-blue-500" /> Image
@@ -1427,10 +1011,8 @@ export default function CommandInput() {
               <FileText className="h-4 w-4 text-orange-500" /> Document
             </button>
           </div>
-        ) : null}
+        )}
       </div>
     </div>
   );
 }
-
-
