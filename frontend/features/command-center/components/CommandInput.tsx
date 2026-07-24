@@ -27,6 +27,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import apiClient from "@/lib/api/client";
+import { useAuthStore } from "@/features/auth/store/auth.store";
 import { useCommandStore } from "../store/command.store";
 import { runCommand } from "../services/command.service";
 import { fetchConversation } from "../services/conversation.service";
@@ -383,6 +384,9 @@ export default function CommandInput() {
   const clearMessages = useCommandStore((s) => s.clearMessages);
   const setMessages = useCommandStore((s) => s.setMessages);
 
+  const user = useAuthStore((state) => state.user);
+  const firstName = user?.full_name?.trim().split(/\s+/)[0] || "there";
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -533,15 +537,29 @@ export default function CommandInput() {
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
 
-      recorder.onstop = () => {
+      recorder.onstop = async () => {
         const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
         const file = new File([blob], `voice-${Date.now()}.webm`, { type: "audio/webm" });
-        const url = URL.createObjectURL(file);
-        setAttachments((prev) => [...prev, { id: crypto.randomUUID(), file, url, kind: "audio" }]);
         stream.getTracks().forEach((t) => t.stop());
         if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
         audioContext.close();
         setWaveLevels(Array(WAVE_BAR_COUNT).fill(3));
+
+        try {
+          const formData = new FormData();
+          formData.append("file", file);
+          const { data } = await apiClient.post<{ text: string }>(
+            "/api/v1/commands/transcribe",
+            formData,
+            { headers: { "Content-Type": undefined } }
+          );
+          if (data?.text) {
+            setPrompt((prev) => (prev ? `${prev} ${data.text}` : data.text));
+            requestAnimationFrame(() => textareaRef.current?.focus());
+          }
+        } catch {
+          toast.error("Could not transcribe voice. Please try again.");
+        }
       };
 
       recorder.start();
@@ -770,8 +788,30 @@ export default function CommandInput() {
         className="flex-1 space-y-4 overflow-y-auto p-5"
       >
         {messages.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-            Type a command below. Example: write a script about morning routines
+          <div className="flex h-full min-h-[50vh] flex-col items-center justify-center px-4 text-center">
+            <p className="font-console-display text-2xl font-semibold text-foreground">
+              Good to see you, {firstName}.
+            </p>
+            <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">
+              What do you want to create today? Describe it below, or start with one of these.
+            </p>
+            <div className="mt-6 flex max-w-2xl flex-wrap items-center justify-center gap-2.5">
+              {[
+                { label: "\ud83c\udfac Write a video script", text: "Write a 60-second YouTube script about " },
+                { label: "\ud83d\uddbc\ufe0f Design a thumbnail", text: "Generate a thumbnail idea for a video about " },
+                { label: "\ud83c\udf99\ufe0f Narrate a voiceover", text: "Write and narrate a short voiceover about " },
+                { label: "\ud83d\udd0d Optimize for SEO", text: "Write SEO title, description, and tags for a video about " },
+              ].map((chip) => (
+                <button
+                  key={chip.label}
+                  type="button"
+                  onClick={() => setPrompt(chip.text)}
+                  className="rounded-full border border-border bg-card px-4 py-2 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
           </div>
         ) : null}
 
