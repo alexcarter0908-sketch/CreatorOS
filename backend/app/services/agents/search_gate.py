@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import logging
@@ -37,6 +37,8 @@ categories above
 this assistant cannot reliably know from memory (a specific business, person, place, price, \
 news, "latest", addresses, contact info, or any named real-world entity). false for casual \
 conversation, greetings, small talk, opinions, creative writing, or timeless general knowledge.
+
+   BUILD vs BUY - this distinction matters a lot: when the user says they want a CRM/system/app/tool "for my business" and describes custom features they want it to have (e.g. "mera CRM jo mujhe chahiye", "ek system banwana hai", "mujhe X chahiye jo Y kare"), they are asking you to DESIGN/BUILD a custom solution for them - this is a "text" or "document" request about THEIR system, not a request to compare or shop for existing off-the-shelf products (Zoho, HubSpot, Salesforce, etc). Do NOT set needs_search=true just because a product category name (CRM, POS, ERP) appears - only set it true if they are explicitly asking which existing product/tool to buy/use, asking for real prices of a named product, or asking to compare specific real options.
 
 3. deep_search: true only if needs_search is true AND the question needs thorough, \
 multi-source research (comparisons, "best X", detailed specifics). Otherwise false.
@@ -124,3 +126,4 @@ async def classify(prompt: str, history: list[dict] | None = None) -> dict:
     except Exception:
         logger.exception("Intent classification failed; falling back to keyword detection.")
         return {"asset_type": None, "needs_search": True, "deep_search": False, "casual_reply": False}
+
