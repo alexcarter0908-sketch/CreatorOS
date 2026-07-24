@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
   Send,
@@ -22,7 +22,11 @@ import {
   Square,
   Link2,
   Download,
+  Layers,
+  CreditCard,
 } from "lucide-react";
+
+import BrandWatermark from "@/components/common/BrandWatermark";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -353,6 +357,7 @@ function AttachmentPreview({ attachment }: { attachment: ChatAttachment }) {
 }
 
 export default function CommandInput() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [prompt, setPrompt] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -509,24 +514,29 @@ export default function CommandInput() {
       }
       const source = audioContext.createMediaStreamSource(stream);
       const analyser = audioContext.createAnalyser();
-      analyser.fftSize = 128;
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.6;
       source.connect(analyser);
       audioContextRef.current = audioContext;
 
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
       function updateLevels() {
-        analyser.getByteTimeDomainData(dataArray);
-        const chunkSize = Math.max(1, Math.floor(dataArray.length / WAVE_BAR_COUNT));
+        analyser.getByteFrequencyData(dataArray);
+        const usableBins = Math.floor(dataArray.length * 0.6);
+        const chunkSize = Math.max(1, Math.floor(usableBins / WAVE_BAR_COUNT));
         const levels = Array.from({ length: WAVE_BAR_COUNT }, (_, i) => {
           const start = i * chunkSize;
-          let maxDev = 0;
-          for (let j = start; j < start + chunkSize && j < dataArray.length; j++) {
-            maxDev = Math.max(maxDev, Math.abs(dataArray[j] - 128));
+          let sum = 0;
+          let count = 0;
+          for (let j = start; j < start + chunkSize && j < usableBins; j++) {
+            sum += dataArray[j];
+            count++;
           }
-          const normalized = maxDev / 128;
-          const boosted = Math.pow(normalized, 0.5); // amplify quiet/normal speech
-          return Math.max(3, Math.min(32, boosted * 32));
+          const avg = count > 0 ? sum / count : 0;
+          const normalized = avg / 255;
+          const boosted = Math.pow(normalized, 0.6);
+          return Math.max(4, Math.min(40, boosted * 40));
         });
         setWaveLevels(levels);
         animationFrameRef.current = requestAnimationFrame(updateLevels);
@@ -768,18 +778,37 @@ export default function CommandInput() {
   const waveColors = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-border bg-card shadow-sm">
+    <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      <BrandWatermark variant="hero" visible={messages.length === 0 && !prompt.trim()} />
       <div className="flex items-center justify-between border-b border-border px-4 py-2">
         <span className="text-sm font-medium text-muted-foreground">Command Center</span>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleNewChat}
-          className="gap-1.5 text-muted-foreground"
-        >
-          <Plus className="h-4 w-4" />
-          New chat
-        </Button>
+        <div className="flex items-center gap-1">
+          <a
+            href="/assets"
+            className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            title="View generated assets"
+          >
+            <Layers className="h-3.5 w-3.5" />
+            Library
+          </a>
+          <button
+            onClick={() => router.push("/billing")}
+            className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10"
+            title="Upgrade your plan"
+          >
+            <CreditCard className="h-3.5 w-3.5" />
+            Upgrade
+          </button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleNewChat}
+            className="gap-1.5 text-muted-foreground"
+          >
+            <Plus className="h-4 w-4" />
+            New chat
+          </Button>
+        </div>
       </div>
 
       <div
